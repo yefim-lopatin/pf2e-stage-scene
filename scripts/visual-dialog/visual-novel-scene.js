@@ -1,0 +1,1028 @@
+// ============================================================
+// visual-novel-scene.js — v4.0 (refactored core)
+// ============================================================
+
+import { VNSceneState, VNPresets } from './vn-state.js';
+import { VNAtmosphere } from './visual-effects/atmosphere/index.js';
+import { VNTransitions } from './visual-effects/vn-transitions.js';
+import { VNBackgroundManager } from './vn-background-manager.js';
+import { VNDialogBuilder } from './vn-dialog-builder.js';
+import { VNSocketHandler } from './vn-socket-handler.js';
+import { stripDupSuffix, parseActorId, parsePlaylistUuid } from './vn-id-utils.js';
+import { VNChatPanel } from './vn-chat-panel.js';
+import { VNSceneHTML } from './vn-scene-html.js';
+
+const VN_DEBUG = false;
+const vnLog = VN_DEBUG ? (...args) => console.log('[VN]', ...args) : () => {};
+
+const UNKNOWN_NAME = 'vn.actor.unknown';
+
+class VisualNovelScene {
+    static ID = 'pf2e-stage-scene';
+    static NS = '.vnScene';
+
+    static ROW_CONFIG = {
+        left:   { enabled: true, maxPerRow: 3, maxRows: 3 },
+        center: { enabled: true, maxPerRow: 3, maxRows: 3 },
+        right:  { enabled: true, maxPerRow: 3, maxRows: 3 }
+    };
+
+    static DEFAULTS = {
+        PORTRAIT_SCALE: 1.0,
+        SCALE_LIMITS: { MIN: 0.5, MAX: 2.0, STEP: 0.1 },
+        ANIMATION_DELAY: 100,
+    };
+
+    static SEL = {
+        OVERLAY: '#vn-scene-overlay',
+        CHARACTER: '.vn-character',
+    };
+
+    constructor() {
+        this.state = new VNSceneState();
+        this.favoriteActors = [];
+        this._$overlay = null;
+        this._creating = false;
+        this._atmosphere = new VNAtmosphere();
+        this._bgManager = new VNBackgroundManager(VisualNovelScene.ID);
+        this._dialogBuilder = new VNDialogBuilder(this);
+        this._socketHandler = null; // initialized after socket is ready
+        this._sceneMusicUuid = null;
+        this._pausedSounds = null; // null = scene music never started; array = it has
+        this._gmOnly = false;      // true = scene hidden from players until "broadcast"
+        this._closing = false;
+
+        this._chatPanel = new VNChatPanel(() => this.$overlay);
+        this._html = new VNSceneHTML(this, VisualNovelScene.ROW_CONFIG);
+        this._persistStateDebounced = VisualNovelScene.debounce(() => this._persistState(), 400);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Init
+    // ══════════════════════════════════════════════════════════
+
+    async initialize() {
+        vnLog('initialized');
+        this._registerSettings();
+        VNPresets.register();
+        await this._bgManager.load();
+        await this.loadFavoriteActors();
+    }
+
+    initSocket(socket) {
+        this._socketHandler = new VNSocketHandler(this, socket);
+    }
+
+    _registerSettings() {
+        for (const [key, type, def] of [['activeScene', Object, {}], ['favoriteActors', Array, []]]) {
+            try {
+                game.settings.register(VisualNovelScene.ID, key, {
+                    name: key, scope: 'world', config: false, type, default: def
+                });
+            } catch { /* already registered */ }
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Utilities
+    // ══════════════════════════════════════════════════════════
+
+    static clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+    static debounce(fn, ms = 50) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+    static _sidePosition($el) {
+        const $side = $el.closest('.vn-side');
+        if ($side.hasClass('vn-left-side')) return 'left';
+        if ($side.hasClass('vn-center-side')) return 'center';
+        if ($side.hasClass('vn-right-side')) return 'right';
+        return null;
+    }
+
+    get $overlay() {
+        if (!this._$overlay?.length || !document.contains(this._$overlay[0])) {
+            this._$overlay = $(VisualNovelScene.SEL.OVERLAY);
+        }
+        return this._$overlay;
+    }
+
+    _invalidateOverlayCache() { this._$overlay = null; }
+
+    _cleanupListeners() {
+        $(document).off(VisualNovelScene.NS);
+        if (this._wheelListener) {
+            document.removeEventListener('wheel', this._wheelListener);
+            this._wheelListener = null;
+        }
+        this._removeAtmoOutsideListener();
+        this._removeSoundsOutsideListener();
+        if (this._soundHookId != null) {
+            Hooks.off('updatePlaylistSound', this._soundHookId);
+            this._soundHookId = null;
+        }
+        this._atmosphere.destroy();
+    }
+
+    _removeAtmoOutsideListener() {
+        if (this._atmoOutsideListener) {
+            document.removeEventListener('click', this._atmoOutsideListener, true);
+            this._atmoOutsideListener = null;
+        }
+    }
+
+    _removeSoundsOutsideListener() {
+        if (this._soundsOutsideListener) {
+            document.removeEventListener('click', this._soundsOutsideListener, true);
+            this._soundsOutsideListener = null;
+        }
+    }
+
+    _setupPickerDismiss(wrap, picker, listenerKey, onOpen = null) {
+        if (!picker.hidden) { picker.hidden = true; return; }
+        picker.hidden = false;
+        onOpen?.();
+        if (this[listenerKey]) {
+            document.removeEventListener('click', this[listenerKey], true);
+            this[listenerKey] = null;
+        }
+        this[listenerKey] = (ev) => {
+            if (!wrap.contains(ev.target)) {
+                picker.hidden = true;
+                document.removeEventListener('click', this[listenerKey], true);
+                this[listenerKey] = null;
+            }
+        };
+        setTimeout(() => document.addEventListener('click', this[listenerKey], true), 0);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Socket (delegated)
+    // ══════════════════════════════════════════════════════════
+
+    emitSocketEvent(action, payload) {
+        this._socketHandler?.emit(action, payload);
+    }
+
+    handleSocketEvent(data) {
+        this._socketHandler?.handle(data);
+    }
+
+    setParallaxOptions(opts) {
+        this._atmosphere._parallax.setOptions(opts);
+    }
+
+    setCameraEnabled(enabled) {
+        this._atmosphere?._camera?.setEnabled(enabled);
+        this._reapplyCameraDof();
+    }
+
+    _reapplyCameraDof() {
+        const overlay = this.$overlay?.[0];
+        if (!overlay) return;
+        const hasSpeaker = Object.values(this.state.speakers).some(Boolean);
+        const cameraOn = game.settings.get(VisualNovelScene.ID, 'cameraEnabled');
+        const dofOn = game.settings.get(VisualNovelScene.ID, 'cameraDoF');
+        overlay.classList.toggle('vn-camera-dof', hasSpeaker && cameraOn && dofOn);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Token Resolution
+    // ══════════════════════════════════════════════════════════
+
+    static resolveTokens(ids, portraitImages = {}, portraitNames = {}) {
+        return ids.map(id => {
+            const baseId = stripDupSuffix(id);
+            const actorId = parseActorId(baseId);
+            if (actorId) {
+                const actor = game.actors.get(actorId);
+                if (!actor) {
+                    const img = portraitImages[id] || portraitImages[baseId];
+                    if (!img) return null;
+                    const name = portraitNames[id] || portraitNames[baseId] || game.i18n.localize(UNKNOWN_NAME);
+                    return { id, actor: { img, id: actorId, name }, name, document: { texture: { src: img } } };
+                }
+                return { id, actor, name: actor.name, document: { texture: { src: actor.prototypeToken?.texture?.src || actor.img } } };
+            }
+            const canvasToken = canvas?.tokens?.get(baseId);
+            if (canvasToken) {
+                if (id === baseId) return canvasToken;
+                return { id, actor: canvasToken.actor, name: canvasToken.name, document: canvasToken.document };
+            }
+            for (const scene of (game.scenes?.contents ?? [])) {
+                const td = scene.tokens.get(baseId);
+                if (td?.actor) return { id, actor: td.actor, name: td.name || td.actor.name,
+                    document: { texture: { src: td.texture?.src || td.actor?.img } } };
+            }
+            const img = portraitImages[id] || portraitImages[baseId];
+            if (img) {
+                const name = portraitNames[id] || portraitNames[baseId] || game.i18n.localize(UNKNOWN_NAME);
+                return { id, actor: { img, id: baseId, name }, name, document: { texture: { src: img } } };
+            }
+            return null;
+        }).filter(Boolean);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // State Persistence
+    // ══════════════════════════════════════════════════════════
+
+    async _persistState() {
+        if (!game.user.isGM) return;
+        try {
+            await game.settings.set(VisualNovelScene.ID, 'activeScene',
+                this.state.isActive ? this.state.toPayload() : {});
+        } catch (e) { console.error('VN: Failed to persist state:', e); }
+    }
+
+    async restoreStateIfNeeded() {
+        if (this.state.isActive) return;
+        try {
+            const s = game.settings.get(VisualNovelScene.ID, 'activeScene');
+            if (!s || (!s.leftIds?.length && !s.centerIds?.length && !s.rightIds?.length && !s.background)) return;
+            vnLog('Restoring scene');
+            this._sceneMusicUuid = s.musicUuid || null;
+            this.createScene(s, false);
+        } catch { /* no saved state */ }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Favorites
+    // ══════════════════════════════════════════════════════════
+
+    async loadFavoriteActors() {
+        try { this.favoriteActors = await game.settings.get(VisualNovelScene.ID, 'favoriteActors') || []; }
+        catch { this.favoriteActors = []; }
+    }
+
+    async saveFavoriteActors() {
+        try { await game.settings.set(VisualNovelScene.ID, 'favoriteActors', this.favoriteActors); }
+        catch (e) { console.error('Error saving favorite actors:', e); }
+    }
+
+    async addToFavorites(actorId) {
+        if (this.favoriteActors.includes(actorId)) return;
+        this.favoriteActors.push(actorId);
+        await this.saveFavoriteActors();
+    }
+
+    async removeFromFavorites(actorId) {
+        const idx = this.favoriteActors.indexOf(actorId);
+        if (idx === -1) return;
+        this.favoriteActors.splice(idx, 1);
+        await this.saveFavoriteActors();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Portrait Scale
+    // ══════════════════════════════════════════════════════════
+
+    setPortraitScale(scale, emit = true) {
+        if (emit && !game.user.isGM) return;
+        const { MIN, MAX } = VisualNovelScene.DEFAULTS.SCALE_LIMITS;
+        this.state.portraitScale = VisualNovelScene.clamp(scale, MIN, MAX);
+        this._applyAllPortraitTransforms();
+        const resetBtn = document.getElementById('reset-size');
+        if (resetBtn) resetBtn.textContent = Math.round(this.state.portraitScale * 100) + '%';
+        if (emit) this.emitSocketEvent('setPortraitScale', { scale: this.state.portraitScale });
+    }
+
+    _applyAllPortraitTransforms() {
+        document.documentElement.style.setProperty('--portrait-scale', this.state.portraitScale);
+        document.querySelectorAll(VisualNovelScene.SEL.CHARACTER).forEach(charEl => {
+            const tid = charEl.dataset.tokenId;
+            const img = charEl.querySelector('.vn-character-img');
+            if (img) img.style.setProperty('--flip-x', this.state.flipped[tid] ? '-1' : '1');
+            const charScale = this.state.portraitScales?.[tid];
+            if (charScale !== undefined) charEl.style.setProperty('--char-scale', charScale);
+            else charEl.style.removeProperty('--char-scale');
+        });
+    }
+
+    setCharacterScale(tokenId, scale, emit = true) {
+        if (emit && !game.user.isGM) return;
+        const { MIN, MAX } = VisualNovelScene.DEFAULTS.SCALE_LIMITS;
+        scale = VisualNovelScene.clamp(Math.round(scale * 20) / 20, MIN, MAX);
+        this.state.portraitScales[tokenId] = scale;
+        const charEl = document.querySelector(`${VisualNovelScene.SEL.CHARACTER}[data-token-id="${tokenId}"]`);
+        if (charEl) charEl.style.setProperty('--char-scale', scale);
+        if (emit) this.emitSocketEvent('setCharacterScale', { tokenId, scale });
+        this._persistStateDebounced();
+    }
+
+    // Normalize portraitScales: for legacy presets where scales are stored under canvas token IDs
+    // instead of actor-based IDs, add actor-based aliases so character() can find the scale.
+    // Handles single-actor case only — multi-instance (same actor N times) requires re-saving the preset.
+    static _normalizePortraitScales(scales) {
+        if (!scales) return {};
+        const result = { ...scales };
+        if (!canvas?.tokens) return result;
+        for (const [key, val] of Object.entries(scales)) {
+            const base = stripDupSuffix(key);
+            if (!parseActorId(base)) {
+                const actorId = canvas.tokens.get(base)?.actor?.id;
+                if (actorId && result[`actor-${actorId}`] === undefined) {
+                    result[`actor-${actorId}`] = val;
+                }
+            }
+        }
+        return result;
+    }
+
+    applyFlip(tokenId, flip) {
+        this.state.flipped[tokenId] = flip;
+        this._applyAllPortraitTransforms();
+    }
+
+    static _applyVisibilityToElement(charEl, visibility) {
+        const v = visibility ?? 'visible';
+        charEl.classList.toggle('vn-character-hidden',      v === 'hidden');
+        charEl.classList.toggle('vn-character-name-hidden', v === 'name-hidden');
+        const nm = charEl.querySelector('.vn-nameplate-text');
+        if (nm) nm.textContent = (v !== 'visible') ? '???' : (charEl.dataset.name || '');
+    }
+
+    applyVisibility(tokenId, visibility, emit = true) {
+        if (emit && !game.user.isGM) return;
+        if (visibility && visibility !== 'visible') this.state.visibility[tokenId] = visibility;
+        else delete this.state.visibility[tokenId];
+        const charEl = document.querySelector(`.vn-character[data-token-id="${tokenId}"]`);
+        if (charEl) VisualNovelScene._applyVisibilityToElement(charEl, visibility ?? 'visible');
+        if (emit) { this.emitSocketEvent('setVisibility', { tokenId, visibility: visibility ?? 'visible' }); this._persistState(); }
+    }
+
+    _applyAllVisibilityStates() {
+        document.querySelectorAll('.vn-character').forEach(charEl =>
+            VisualNovelScene._applyVisibilityToElement(charEl, this.state.visibility[charEl.dataset.tokenId] ?? 'visible'));
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Scene Music
+    // ══════════════════════════════════════════════════════════
+
+    async startSceneMusic(uuid) {
+        if (!uuid) return;
+        try {
+            const parsed = parsePlaylistUuid(uuid);
+            if (!parsed) return;
+            const { playlist, sound } = parsed;
+
+            // First start only: pause other sounds, saving their position for later resume
+            if (this._pausedSounds === null) {
+                this._pausedSounds = [];
+                for (const pl of game.playlists.contents) {
+                    for (const s of pl.sounds.contents) {
+                        if (s.playing) {
+                            this._pausedSounds.push({ playlistId: pl.id, soundId: s.id });
+                            await s.update({ playing: false, pausedTime: s.sound?.currentTime ?? null });
+                        }
+                    }
+                }
+            }
+
+            if (!sound.repeat) await sound.update({ repeat: true });
+            await playlist.playSound(sound);
+            this._sceneMusicUuid = uuid;
+        } catch(e) { console.error('[VN] Failed to start scene music:', e); }
+    }
+
+    async stopSceneMusic(resumePaused = false) {
+        if (this._sceneMusicUuid) {
+            try {
+                const parsed = parsePlaylistUuid(this._sceneMusicUuid);
+                if (parsed?.sound?.playing) await parsed.playlist.stopSound(parsed.sound);
+            } catch {}
+            this._sceneMusicUuid = null;
+        }
+        if (resumePaused && this._pausedSounds) {
+            const toResume = [...this._pausedSounds];
+            this._pausedSounds = null;
+            for (const { playlistId, soundId } of toResume) {
+                try {
+                    const pl = game.playlists.get(playlistId);
+                    const s = pl?.sounds.get(soundId);
+                    if (s) await pl.playSound(s);
+                } catch {}
+            }
+        } else if (resumePaused) {
+            this._pausedSounds = null;
+        }
+    }
+
+    async _handleMusicTransition(newUuid) {
+        // When removing music: resume paused. When switching: keep paused sounds waiting.
+        await this.stopSceneMusic(newUuid === null);
+        if (newUuid) await this.startSceneMusic(newUuid);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Background Overlay & Atmosphere
+    // ══════════════════════════════════════════════════════════
+
+    setBackgroundOverlay(enabled, emit = true) {
+        if (emit && !game.user.isGM) return;
+        this.state.backgroundOverlay = enabled;
+        this._bgManager.applyBackground(this.$overlay, this.state.background, enabled);
+        if (emit) this.emitSocketEvent('setBackgroundOverlay', { enabled });
+    }
+
+    setAtmosphereEffect(effect, emit = true) {
+        if (emit && !game.user.isGM) return;
+        if (!VNAtmosphere.EFFECTS.includes(effect)) return;
+        this.state.atmosphereEffect = effect;
+        const overlayEl = this.$overlay?.[0];
+        if (overlayEl) {
+            this._atmosphere.destroy();
+            this._atmosphere.init(overlayEl, effect);
+            this._updateAtmosphereButton();
+            if (this.state.particlesForeground) overlayEl.classList.add('vn-particles-fg');
+        }
+        if (emit) { this.emitSocketEvent('setAtmosphereEffect', { effect }); this._persistState(); }
+    }
+
+    setParticlesForeground(enabled, emit = true) {
+        if (emit && !game.user.isGM) return;
+        this.state.particlesForeground = enabled;
+        const overlay = this.$overlay?.[0];
+        if (overlay) {
+            overlay.classList.toggle('vn-particles-fg', enabled);
+            const btn = overlay.querySelector('.vn-particles-fg-btn');
+            if (btn) btn.classList.toggle('active', enabled);
+        }
+        if (emit) { this.emitSocketEvent('setParticlesForeground', { enabled }); this._persistState(); }
+    }
+
+    _updateAtmosphereButton() {
+        const effect = this.state.atmosphereEffect || 'particles';
+        const overlay = this.$overlay?.[0];
+        if (!overlay) return;
+        const btn = overlay.querySelector('.vn-atmosphere-cycle-btn');
+        if (btn) {
+            btn.querySelector('i').className = `fas ${VNAtmosphere.EFFECT_ICONS[effect]}`;
+            btn.title = game.i18n.format('vn.atmosphere.buttonTitle', { effect: game.i18n.localize(VNAtmosphere.EFFECT_LABELS[effect]) });
+        }
+        overlay.querySelectorAll('.vn-atmo-item').forEach(item =>
+            item.classList.toggle('active', item.dataset.effect === effect));
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Sound Cues
+    // ══════════════════════════════════════════════════════════
+
+    _buildSoundItemHtml(cue) {
+        const playing = parsePlaylistUuid(cue.uuid)?.sound?.playing ?? false;
+        const icon = playing ? 'fa-stop-circle' : 'fa-play-circle';
+        const cls = playing ? ' playing' : '';
+        return `<button type="button" class="vn-sound-item${cls}" data-uuid="${cue.uuid}" title="${cue.label || ''}">`
+            + `<i class="fas ${icon}"></i><span>${cue.label || game.i18n.localize('vn.sounds.untitled')}</span></button>`;
+    }
+
+    _generateSoundsWrapHTML() {
+        const cues = this.state.soundCues || [];
+        const btn = (cls, icon, title) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i></button>`;
+        const items = cues.length
+            ? cues.map(c => this._buildSoundItemHtml(c)).join('')
+            : `<div class="vn-sounds-empty">${game.i18n.localize('vn.sounds.empty')}</div>`;
+        return `<div class="vn-sounds-wrap"${!cues.length ? ' hidden' : ''}>
+            ${btn('vn-sounds-btn', 'fa-volume-up', game.i18n.localize('vn.sounds.buttonTitle'))}
+            <div class="vn-sounds-picker" hidden>
+                <div class="vn-sounds-picker-header"><i class="fas fa-music"></i> ${game.i18n.localize('vn.sounds.header')}</div>
+                <div class="vn-sounds-list">${items}</div>
+            </div>
+        </div>`;
+    }
+
+    _updateSoundsPanel() {
+        const overlay = this.$overlay?.[0];
+        const wrap = overlay?.querySelector('.vn-sounds-wrap');
+        if (!wrap) return;
+        const cues = this.state.soundCues || [];
+        wrap.hidden = !cues.length;
+        const picker = wrap.querySelector('.vn-sounds-picker');
+        if (!picker) return;
+        if (!cues.length) { picker.hidden = true; return; }
+        const list = picker.querySelector('.vn-sounds-list');
+        if (list) list.innerHTML = cues.map(c => this._buildSoundItemHtml(c)).join('');
+    }
+
+    _refreshSoundItemState(soundDoc) {
+        const list = this.$overlay?.[0]?.querySelector('.vn-sounds-list');
+        if (!list) return;
+        for (const cue of (this.state.soundCues || [])) {
+            // UUID format: Playlist.playlistId.PlaylistSound.soundId
+            if (cue.uuid?.split('.')?.[3] !== soundDoc.id) continue;
+            const btn = list.querySelector(`.vn-sound-item[data-uuid="${cue.uuid}"]`);
+            if (!btn) continue;
+            const playing = soundDoc.playing;
+            btn.classList.toggle('playing', playing);
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = `fas ${playing ? 'fa-stop-circle' : 'fa-play-circle'}`;
+        }
+    }
+
+    async playSoundCue(uuid) {
+        if (!game.user.isGM) return;
+        const parsed = parsePlaylistUuid(uuid);
+        const sound = parsed?.sound;
+        if (!sound) { ui.notifications.warn(game.i18n.localize('vn.sounds.trackNotFound')); return; }
+        const playlist = sound.parent;
+        if (sound.playing) {
+            await playlist.stopSound(sound);
+        } else {
+            await playlist.playSound(sound);
+        }
+        this._updateSoundsPanel();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // GM-Only mode
+    // ══════════════════════════════════════════════════════════
+
+    broadcastToPlayers() {
+        if (!game.user.isGM || !this.state.isActive) return;
+        this._gmOnly = false;
+        this.emitSocketEvent('open', this.state.toPayload());
+        if (this._sceneMusicUuid) this.startSceneMusic(this._sceneMusicUuid);
+        this._updateGmOnlyUI();
+    }
+
+    _updateGmOnlyUI() {
+        const overlay = this.$overlay?.[0];
+        if (!overlay) return;
+        const broadcastBtn = overlay.querySelector('.vn-broadcast-button');
+        if (broadcastBtn) broadcastBtn.style.display = this._gmOnly ? '' : 'none';
+        overlay.classList.toggle('vn-gm-only', this._gmOnly);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Minimize / Maximize
+    // ══════════════════════════════════════════════════════════
+
+    setMinimized(value, emit = true, forAll = true, fromSocket = false) {
+        if (forAll && !game.user.isGM && !fromSocket) return;
+        this.state.minimized = value;
+        this.$overlay.toggleClass('minimized', value);
+        if (emit && forAll && game.user.isGM) this.emitSocketEvent(value ? 'minimize' : 'maximize', {});
+    }
+
+    _setMinimizedSelf(value) {
+        if (!game.user.isGM) return;
+        this.setMinimized(value, false, false);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Dialog (delegated)
+    // ══════════════════════════════════════════════════════════
+
+    openSceneDialog() { this._dialogBuilder.openSceneDialog(); }
+    editSceneDialog() { this._dialogBuilder.editSceneDialog(); }
+    openPortraitSizeDialog() { this._dialogBuilder.openScaleDialog(); }
+
+    // ══════════════════════════════════════════════════════════
+    // Create / Update / Close Scene
+    // ══════════════════════════════════════════════════════════
+
+    createScene(payload, emit = true) {
+        if (this._creating) return;
+        this._creating = true;
+        this._closing = false;
+        try { this._doCreateScene(payload, emit); }
+        finally { this._creating = false; }
+    }
+
+    _doCreateScene(payload, emit) {
+        vnLog('createScene, emit:', emit);
+        this._atmosphere.destroy();
+        this.state.reset();
+        this.state.fromPayload({
+            leftIds: payload.leftIds,
+            centerIds: payload.centerIds,
+            rightIds: payload.rightIds,
+            presetActors: payload.presetActors || [],
+            background: payload.background,
+            backgroundOverlay: payload.backgroundOverlay ?? true,
+            portraitScale: payload.portraitScale ?? VisualNovelScene.DEFAULTS.PORTRAIT_SCALE,
+            atmosphereEffect: payload.atmosphereEffect ?? 'particles',
+            particlesForeground: payload.particlesForeground ?? false,
+            speakers: payload.speakers || {},
+            flipped: payload.flipped || {},
+            visibility: payload.visibility || null,
+            hidden: payload.hidden || null,
+            musicUuid: payload.musicUuid ?? null,
+            soundCues: payload.soundCues || [],
+            portraitImages: payload.portraitImages || {},
+            portraitNames: payload.portraitNames || {},
+            portraitScales: payload.portraitScales || {},
+        });
+
+        // Normalize portrait scales: add actor-based aliases for any canvas token ID keys
+        this.state.portraitScales = VisualNovelScene._normalizePortraitScales(this.state.portraitScales);
+
+        this._gmOnly = !!(payload.gmOnly) && emit && game.user.isGM;
+
+        if (emit && !this._gmOnly) this.emitSocketEvent('open', this.state.toPayload());
+
+        const musicUuid = this.state.musicUuid;
+        if (emit && game.user.isGM) {
+            const prevMusicUuid = this._sceneMusicUuid;
+            if (prevMusicUuid !== musicUuid) this._handleMusicTransition(musicUuid);
+        } else {
+            this._sceneMusicUuid = musicUuid;
+        }
+
+        this._closeChatPanel();
+
+        $(VisualNovelScene.SEL.OVERLAY).remove();
+        this._invalidateOverlayCache();
+        this._cleanupListeners();
+
+        const tokens = Object.fromEntries(
+            VNSceneState.POSITIONS.map(pos => [pos, VisualNovelScene.resolveTokens(
+                this.state[`${pos}Ids`], this.state.portraitImages, this.state.portraitNames)])
+        );
+
+        $('body').append(this._html.scene(tokens));
+        this._invalidateOverlayCache();
+        this._applyAllPortraitTransforms();
+
+        document.querySelectorAll('#vn-scene-overlay .vn-character .vn-character-img').forEach(img => img.style.opacity = '0');
+        this._bgManager.applyBackground(this.$overlay, this.state.background, this.state.backgroundOverlay);
+
+        const speakersSnapshot = { ...this.state.speakers };
+        setTimeout(() => {
+            this.activateSceneListeners();
+            this._applyAllPortraitTransforms();
+            this._atmosphere.init(this.$overlay[0], this.state.atmosphereEffect);
+            this._updateAtmosphereButton();
+            if (this.state.particlesForeground) this.$overlay[0]?.classList.add('vn-particles-fg');
+            this._animateInitialCharacters();
+            this._restoreSpeakers(speakersSnapshot);
+            if (game.user.isGM) this._updateGmOnlyUI();
+        }, VisualNovelScene.DEFAULTS.ANIMATION_DELAY);
+
+        this._persistState();
+    }
+
+    updateSceneLayout(payload, emit = true) {
+        if (!this.state.isActive) return;
+
+        const prevSpeakers = { ...this.state.speakers };
+        const prevBackground = this.state.background;
+
+        this.state.leftIds = payload.leftIds ? [...payload.leftIds] : [];
+        this.state.centerIds = payload.centerIds ? [...payload.centerIds] : [];
+        this.state.rightIds = payload.rightIds ? [...payload.rightIds] : [];
+        if (payload.presetActors !== undefined) this.state.presetActors = [...(payload.presetActors || [])];
+        if (payload.background != null) this.state.background = payload.background;
+        if (payload.backgroundOverlay != null) this.state.backgroundOverlay = payload.backgroundOverlay;
+        if (payload.flipped !== undefined && payload.flipped !== null) this.state.flipped = { ...payload.flipped };
+        if (payload.visibility !== undefined && payload.visibility !== null) this.state.visibility = { ...payload.visibility };
+        if (payload.portraitImages !== undefined && payload.portraitImages !== null) this.state.portraitImages = { ...payload.portraitImages };
+        if (payload.portraitNames !== undefined && payload.portraitNames !== null) this.state.portraitNames = { ...payload.portraitNames };
+        if (payload.portraitScales !== undefined && payload.portraitScales !== null) {
+            this.state.portraitScales = VisualNovelScene._normalizePortraitScales({ ...payload.portraitScales });
+        }
+        if (payload.atmosphereEffect != null && this.state.atmosphereEffect !== payload.atmosphereEffect) {
+            this.state.atmosphereEffect = payload.atmosphereEffect;
+            const overlayEl = this.$overlay?.[0];
+            if (overlayEl) { this._atmosphere.destroy(); this._atmosphere.init(overlayEl, payload.atmosphereEffect); this._updateAtmosphereButton(); }
+        }
+        if (payload.particlesForeground != null && this.state.particlesForeground !== payload.particlesForeground) {
+            this.setParticlesForeground(payload.particlesForeground, false);
+        }
+        if ('musicUuid' in payload && emit && game.user.isGM) {
+            const prevMusicUuid = this._sceneMusicUuid;
+            this.state.musicUuid = payload.musicUuid;
+            if (prevMusicUuid !== payload.musicUuid) this._handleMusicTransition(payload.musicUuid);
+        }
+        if (payload.soundCues !== undefined && payload.soundCues !== null) {
+            this.state.soundCues = [...payload.soundCues];
+            if (emit) this._updateSoundsPanel();
+        }
+
+        if ('gmOnly' in payload && emit && game.user.isGM) this._gmOnly = !!payload.gmOnly;
+
+        if (emit && !this._gmOnly) this.emitSocketEvent('updateScene', this.state.toPayload());
+        requestAnimationFrame(async () => {
+            const bgChanged = payload.background != null && payload.background !== prevBackground && prevBackground;
+            if (bgChanged) await this._bgManager.switchWithTransition(this.$overlay, this.state.background, this.state.backgroundOverlay, this._atmosphere);
+            else this._bgManager.applyBackground(this.$overlay, this.state.background, this.state.backgroundOverlay);
+
+            await Promise.all(VNSceneState.POSITIONS.map(side =>
+                this._updateSide(this.state[`${side}Ids`], `.vn-${side}-side`, side)));
+
+            this._applyAllPortraitTransforms();
+            this._applyAllVisibilityStates();
+            this._restoreSpeakers(prevSpeakers);
+        });
+
+        this._persistState();
+    }
+
+    async _updateSide(ids, sideSelector, position) {
+        const tokens = VisualNovelScene.resolveTokens(ids, this.state.portraitImages, this.state.portraitNames);
+        const container = document.querySelector(`.vn-side${sideSelector}`);
+        if (!container) return;
+
+        const { useMultiRow } = this._html.computeRowLayout(ids.length, position);
+        container.classList.toggle('vn-multi-row', useMultiRow);
+
+        const oldChars = container.querySelectorAll('.vn-character');
+        const oldIds = Array.from(oldChars).map(el => el.dataset.tokenId);
+        const newIds = tokens.map(t => t.id || `actor-${t.actor.id}`);
+
+        if (oldIds.length === newIds.length && oldIds.every((id, i) => id === newIds[i])) return;
+
+        const oldIdSet = new Set(oldIds);
+        const newIdSet = new Set(newIds);
+        const removingEls = Array.from(oldChars).filter(el => !newIdSet.has(el.dataset.tokenId));
+        const addingIds = new Set(newIds.filter(id => !oldIdSet.has(id)));
+
+        if (removingEls.length) await Promise.all(removingEls.map(el => VNTransitions.exitCharacter(el)));
+
+        if (tokens.length) {
+            container.innerHTML = this._html.sideCharacters(tokens, position);
+            container.classList.remove('empty');
+
+            const activeSpeaker = this.state.speakers[position];
+            container.querySelectorAll('.vn-character').forEach(charEl => {
+                const tid = charEl.dataset.tokenId;
+                const img = charEl.querySelector('.vn-character-img');
+                if (img) img.style.setProperty('--flip-x', this.state.flipped[tid] ? '-1' : '1');
+                if (addingIds.has(tid) && img) img.style.opacity = '0';
+            });
+            // Force reflow so the browser registers initial CSS state before .active
+            // is applied — without this, transitions don't play on freshly inserted elements
+            container.offsetHeight;
+            if (activeSpeaker) {
+                container.querySelector(`.vn-character[data-token-id="${activeSpeaker}"]`)
+                    ?.classList.add('active');
+            }
+
+            let idx = 0;
+            container.querySelectorAll('.vn-character').forEach(charEl => {
+                if (addingIds.has(charEl.dataset.tokenId)) {
+                    setTimeout(() => VNTransitions.enterCharacter(charEl, 'auto'), idx++ * 100);
+                }
+            });
+        } else {
+            container.innerHTML = '';
+            container.classList.add('empty');
+        }
+    }
+
+    _restoreSpeakers(prevSpeakers) {
+        for (const pos of VNSceneState.POSITIONS) {
+            const sid = prevSpeakers[pos];
+            this.state.speakers[pos] = null;
+            if (sid && this.state.getIdsForPosition(pos).includes(sid)) {
+                this.setActiveSpeaker(sid, false, pos);
+            } else {
+                $(`.vn-${pos}-side .vn-character`).removeClass('active');
+                $(`.vn-${pos}-side .vn-row`).removeClass('vn-row-promoted');
+            }
+        }
+    }
+
+    closeScene(emit = true) {
+        if (emit && !game.user.isGM) return;
+        if (this._closing) return;
+        this._closing = true;
+
+        if (emit) this.stopSceneMusic(true);
+        this._closeChatPanel();
+        this._cleanupListeners();
+
+        const $ov = this.$overlay;
+        if ($ov.length) {
+            const characters = $ov[0].querySelectorAll('.vn-character');
+            characters.forEach((charEl, i) => setTimeout(() => VNTransitions.exitCharacter(charEl), i * 50));
+            const exitDelay = Math.min(characters.length * 50 + 600, 900);
+            setTimeout(() => {
+                $ov.addClass('vn-closing');
+                setTimeout(() => { $ov.remove(); this._closing = false; }, 600);
+            }, exitDelay);
+        } else {
+            this._closing = false;
+        }
+
+        this._invalidateOverlayCache();
+        this.state.reset();
+        if (emit) this.emitSocketEvent('close', {});
+        this._persistState();
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Active Speaker
+    // ══════════════════════════════════════════════════════════
+
+    setActiveSpeaker(tokenId, emit = true, position = null) {
+        if (emit && !game.user.isGM) return;
+        const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
+
+        if (!position) position = VisualNovelScene._sidePosition($char);
+        if (!position) return;
+
+        const activated = this.state.toggleSpeaker(tokenId, position);
+        $(`.vn-${position}-side .vn-character`).removeClass('active');
+        const $side = $(`.vn-${position}-side`);
+        $side.find('.vn-row').removeClass('vn-row-promoted');
+
+        if (activated) {
+            $char.addClass('active');
+            const $parentRow = $char.closest('.vn-row');
+            if ($parentRow.length && $parentRow.hasClass('vn-back-row')) $parentRow.addClass('vn-row-promoted');
+        }
+
+        this._atmosphere?.onSpeakerChange(activated ? $char[0] : null);
+        this._reapplyCameraDof();
+
+        if (emit) {
+            this.emitSocketEvent('setSpeaker', { tokenId, position, active: activated });
+            this._persistStateDebounced();
+        }
+    }
+
+    _applyExplicitSpeaker(tokenId, position, active) {
+        this.state.speakers[position] = active ? tokenId : null;
+        $(`.vn-${position}-side .vn-character`).removeClass('active');
+        $(`.vn-${position}-side .vn-row`).removeClass('vn-row-promoted');
+        if (active) {
+            const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
+            $char.addClass('active');
+            const $parentRow = $char.closest('.vn-row');
+            if ($parentRow.length && $parentRow.hasClass('vn-back-row')) $parentRow.addClass('vn-row-promoted');
+            this._atmosphere?.onSpeakerChange($char[0]);
+        } else {
+            this._atmosphere?.onSpeakerChange(null);
+        }
+        this._reapplyCameraDof();
+    }
+
+    setExclusiveSpeaker(tokenId, emit = true) {
+        if (emit && !game.user.isGM) return;
+        for (const pos of VNSceneState.POSITIONS) {
+            this.state.speakers[pos] = null;
+            $(`.vn-${pos}-side .vn-character`).removeClass('active');
+            $(`.vn-${pos}-side .vn-row`).removeClass('vn-row-promoted');
+        }
+        const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
+        const position = VisualNovelScene._sidePosition($char);
+        if (!position) return;
+        this.state.speakers[position] = tokenId;
+        $char.addClass('active');
+        const $row = $char.closest('.vn-row');
+        if ($row.hasClass('vn-back-row')) $row.addClass('vn-row-promoted');
+
+        this._atmosphere?.onSpeakerChange($char[0]);
+        this._reapplyCameraDof();
+
+        if (emit) {
+            this.emitSocketEvent('setExclusiveSpeaker', { tokenId });
+            this._persistStateDebounced();
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Animations
+    // ══════════════════════════════════════════════════════════
+
+    _animateInitialCharacters(staggerMs = 120) {
+        const overlay = this.$overlay[0];
+        if (!overlay) return;
+        overlay.querySelectorAll('.vn-character').forEach((charEl, index) => {
+            const img = charEl.querySelector('.vn-character-img');
+            if (img) img.style.opacity = '0';
+            setTimeout(() => VNTransitions.enterCharacter(charEl, 'auto'), index * staggerMs);
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Scene Listeners
+    // ══════════════════════════════════════════════════════════
+
+    activateSceneListeners() {
+        this._cleanupListeners();
+        const ns = VisualNovelScene.NS;
+
+        $(document).on(`click${ns}`, '.vn-close-button', () => this.closeScene(true));
+        $(document).on(`click${ns}`, '.vn-chat-button', () => this._toggleChat());
+
+        $(document).on(`keydown${ns}`, (e) => {
+            if (e.key === 'Escape') {
+                const picker = document.querySelector('#vn-scene-overlay .vn-atmosphere-picker');
+                if (picker && !picker.hidden) { picker.hidden = true; return; }
+                if (!this.state.minimized) this.closeScene(true);
+            }
+        });
+
+        if (game.user.isGM) this._setupGMListeners(ns);
+        this._setupCharacterListeners();
+    }
+
+    _setupGMListeners(ns) {
+        const { STEP } = VisualNovelScene.DEFAULTS.SCALE_LIMITS;
+        const actions = {
+            '.vn-settings-button': () => this.editSceneDialog(),
+            '.vn-minimize-all-button': () => this.setMinimized(true, true, true),
+            '.vn-minimize-self-button': () => this._setMinimizedSelf(true),
+            '.vn-maximize-all-button': () => this.setMinimized(false, true, true),
+            '.vn-maximize-self-button': () => this._setMinimizedSelf(false),
+            '#decrease-size': () => this.setPortraitScale(this.state.portraitScale - STEP, true),
+            '#increase-size': () => this.setPortraitScale(this.state.portraitScale + STEP, true),
+            '#reset-size': () => this.setPortraitScale(VisualNovelScene.DEFAULTS.PORTRAIT_SCALE, true),
+            '#size-dialog': () => this.openPortraitSizeDialog(),
+            '.vn-atmosphere-cycle-btn': (e) => {
+                e.stopPropagation();
+                const wrap = e.currentTarget.closest('.vn-atmo-wrap');
+                const picker = wrap?.querySelector('.vn-atmosphere-picker');
+                if (!picker) return;
+                this._setupPickerDismiss(wrap, picker, '_atmoOutsideListener');
+            },
+            '.vn-particles-fg-btn': () => this.setParticlesForeground(!this.state.particlesForeground, true)
+        };
+        for (const [sel, fn] of Object.entries(actions)) $(document).on(`click${ns}`, sel, fn);
+
+        $(document).on(`click${ns}`, '.vn-broadcast-button', () => this.broadcastToPlayers());
+
+        $(document).on(`click${ns}`, '.vn-sounds-btn', (e) => {
+            e.stopPropagation();
+            const wrap = e.currentTarget.closest('.vn-sounds-wrap');
+            const picker = wrap?.querySelector('.vn-sounds-picker');
+            if (!picker) return;
+            this._setupPickerDismiss(wrap, picker, '_soundsOutsideListener', () => this._updateSoundsPanel());
+        });
+
+        $(document).on(`click${ns}`, '.vn-sound-item', (e) => {
+            const uuid = e.currentTarget.dataset.uuid;
+            if (uuid) this.playSoundCue(uuid);
+        });
+
+        $(document).on(`click${ns}`, '.vn-atmo-item', (e) => {
+            const effect = e.currentTarget.dataset.effect;
+            if (!effect) return;
+            this.setAtmosphereEffect(effect);
+            const picker = document.querySelector('#vn-scene-overlay .vn-atmosphere-picker');
+            if (picker) picker.hidden = true;
+        });
+
+        $(document).on(`click${ns}`, '.vn-epicrolls-button', () => {
+            if (!game.modules.get('epic-rolls-5e')?.active) return;
+            if (ui.EpicRolls5e?.GetRollData) new ui.EpicRolls5e.GetRollData({ actors: [], contestants: [], type: '', contest: null, options: {} }).render(true);
+        });
+
+        this._soundHookId = Hooks.on('updatePlaylistSound', (soundDoc) => {
+            this._refreshSoundItemState(soundDoc);
+        });
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Chat Panel (delegated to VNChatPanel)
+    // ══════════════════════════════════════════════════════════
+
+    _toggleChat() { this._chatPanel.toggle(); }
+    _closeChatPanel() { this._chatPanel.close(); }
+
+    _setupCharacterListeners() {
+        const ns = VisualNovelScene.NS;
+        const sel = VisualNovelScene.SEL.CHARACTER;
+
+        $(document).on(`click${ns}`, sel, (e) => {
+            e.preventDefault(); e.stopPropagation();
+            const tokenId = $(e.currentTarget).data('token-id');
+            if (e.ctrlKey) this.setExclusiveSpeaker(tokenId, true);
+            else this.setActiveSpeaker(tokenId, true);
+        });
+        $(document).on(`mousedown${ns}`, sel, (e) => {
+            if (!game.user.isGM || e.button !== 1) return;
+            e.preventDefault(); e.stopImmediatePropagation();
+            const tokenId = $(e.currentTarget).data('token-id');
+            const newFlip = !this.state.flipped[tokenId];
+            this.applyFlip(tokenId, newFlip);
+            this.emitSocketEvent('flipPortrait', { tokenId, flip: newFlip });
+        });
+        $(document).on(`contextmenu${ns}`, sel, (e) => {
+            if (!game.user.isGM) return;
+            e.preventDefault(); e.stopImmediatePropagation();
+            const tokenId = $(e.currentTarget).data('token-id');
+            const current = this.state.visibility[tokenId] ?? 'visible';
+            const cycle = VNSceneState.VISIBILITY_CYCLE;
+            const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+            this.applyVisibility(tokenId, next, true);
+        });
+        this._wheelListener = (e) => {
+            if (!game.user.isGM || !e.altKey) return;
+            const charEl = e.target.closest(sel);
+            if (!charEl) return;
+            e.preventDefault(); e.stopImmediatePropagation();
+            const tokenId = charEl.dataset.tokenId;
+            const current = this.state.portraitScales[tokenId] ?? 1;
+            const delta = e.deltaY > 0 ? -0.05 : 0.05;
+            this.setCharacterScale(tokenId, current + delta);
+        };
+        document.addEventListener('wheel', this._wheelListener, { passive: false });
+    }
+}
+
+window.VisualNovelScene = VisualNovelScene;
+window.VNSceneState = VNSceneState;
+window.VNPresets = VNPresets;
+
+export { VisualNovelScene };

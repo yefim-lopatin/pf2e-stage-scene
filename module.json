@@ -1,0 +1,47 @@
+{
+  "id": "pf2e-stage-scene",
+  "title": "PF2e Stage Scene",
+  "description": "<p>Визуальные сцены для диалогов: портреты актёров, фоны, эффекты, музыка и сохранённые пресеты.</p>",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "Laziriti",
+      "flags": {}
+    }
+  ],
+  "url": "https://github.com/yefim-lopatin/pf2e-stage-scene",
+  "manifest": "https://github.com/yefim-lopatin/pf2e-stage-scene/releases/latest/download/module.json",
+  "download": "https://github.com/yefim-lopatin/pf2e-stage-scene/releases/latest/download/pf2e-stage-scene.zip",
+  "esmodules": [
+    "scripts/main.js"
+  ],
+  "styles": [
+"styles/visual-novel-scene.css",
+    "styles/visual-dialog/visual-effects/index.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json",
+      "flags": {}
+    },
+    {
+      "lang": "ru",
+      "name": "Русский",
+      "path": "lang/ru.json",
+      "flags": {}
+    }
+  ],
+  "relationships": {
+    "requires": [
+      { "id": "socketlib", "type": "module", "compatibility": { "minimum": "1.0" } }
+    ]
+  },
+  "socket": true,
+  "flags": {}
+}
