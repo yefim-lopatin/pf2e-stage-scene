@@ -26,7 +26,17 @@
   },
   "vn": {
     "toolbar": {
-      "particlesForeground": "Particles in front of characters"
+      "particlesForeground": "Particles in front of characters",
+      "settingsShort": "Settings",
+      "atmosphereShort": "Effects",
+      "particlesShort": "Particles",
+      "soundsShort": "Sounds",
+      "minimizeAllShort": "Minimize all",
+      "minimizeSelfShort": "Minimize",
+      "epicRollsShort": "Rolls",
+      "broadcastShort": "Show",
+      "chatShort": "Chat",
+      "closeShort": "Close"
     },
     "help": {
       "btnTitle": "Scene controls help",
@@ -46,6 +56,12 @@
       "d_close": "close scene",
       "k_chat": "Chat",
       "d_chat": "embedded scene chat"
+    },
+    "dialog": {
+      "worldActorsHeader": "World actors",
+      "actorSearchPlaceholder": "Find an actor…",
+      "actorLibraryHint": "Click to add an actor to available characters",
+      "noWorldActors": "There are no actors in this world"
     },
     "bg": {
       "particlesForeground": "Particles on top"

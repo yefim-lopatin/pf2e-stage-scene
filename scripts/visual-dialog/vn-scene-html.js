@@ -75,7 +75,7 @@ class VNSceneHTML {
         const flipX = state.flipped[tokenId] ? '-1' : '1';
 
         return `<div class="vn-character ${rowClass} ${hiddenClass}" data-token-id="${tokenId}" data-name="${token.name}" style="${charStyle}">
-            <div class="vn-speaking-indicator"><span></span><span></span><span></span></div>
+            <div class="vn-speaking-bubble" aria-hidden="true"></div>
             <img class="vn-character-img" src="${imgSrc}" alt="${token.name}" loading="lazy" style="--flip-x: ${flipX}">
             <div class="vn-character-nameplate"><span class="vn-nameplate-text">${displayName}</span></div>
             <div class="vn-character-glow"></div></div>`;
@@ -130,30 +130,30 @@ class VNSceneHTML {
             }).join('')
         ).join('');
 
-        const btn = (cls, icon, title) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i></button>`;
+        const btn = (cls, icon, title, label) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i><span class="vn-toolbar-label">${label}</span></button>`;
 
         const toolbar = isGM
             ? `<div class="vn-toolbar">
-                ${btn('vn-settings-button', 'fa-cog', game.i18n.localize('vn.toolbar.settings'))}
+                ${btn('vn-settings-button', 'fa-cog', game.i18n.localize('vn.toolbar.settings'), game.i18n.localize('vn.toolbar.settingsShort'))}
                 <div class="vn-atmo-wrap">
-                    ${btn('vn-atmosphere-cycle-btn', VNAtmosphere.EFFECT_ICONS[atmoEffect], game.i18n.format('vn.atmosphere.buttonTitle', { effect: game.i18n.localize(VNAtmosphere.EFFECT_LABELS[atmoEffect]) }))}
+                    ${btn('vn-atmosphere-cycle-btn', VNAtmosphere.EFFECT_ICONS[atmoEffect], game.i18n.format('vn.atmosphere.buttonTitle', { effect: game.i18n.localize(VNAtmosphere.EFFECT_LABELS[atmoEffect]) }), game.i18n.localize('vn.toolbar.atmosphereShort'))}
                     <div class="vn-atmosphere-picker" hidden>
                         <div class="vn-atmosphere-picker-header"><i class="fas fa-wand-sparkles"></i> ${game.i18n.localize('vn.atmosphere.header')}</div>
                         <div class="vn-atmosphere-picker-grid">${pickerItems}</div>
                     </div>
                 </div>
-                ${btn(`vn-particles-fg-btn${state.particlesForeground ? ' active' : ''}`, 'fa-layer-group', game.i18n.localize('vn.toolbar.particlesForeground'))}
+                ${btn(`vn-particles-fg-btn${state.particlesForeground ? ' active' : ''}`, 'fa-layer-group', game.i18n.localize('vn.toolbar.particlesForeground'), game.i18n.localize('vn.toolbar.particlesShort'))}
                 ${this._scene._generateSoundsWrapHTML()}
-                ${btn('vn-minimize-all-button', 'fa-window-minimize', game.i18n.localize('vn.toolbar.minimizeAll'))}
-                ${btn('vn-minimize-self-button', 'fa-eye-slash', game.i18n.localize('vn.toolbar.minimizeSelf'))}
-                ${btn('vn-epicrolls-button', 'fa-dice-d20', game.i18n.localize('vn.toolbar.epicRolls'))}
-                <button type="button" class="vn-toolbar-btn vn-broadcast-button" title="${game.i18n.localize('vn.toolbar.broadcast')}" style="display:none"><i class="fas fa-broadcast-tower"></i></button>
-                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'))}
-                ${btn('vn-close-button', 'fa-times', game.i18n.localize('vn.toolbar.closeScene'))}
+                ${btn('vn-minimize-all-button', 'fa-window-minimize', game.i18n.localize('vn.toolbar.minimizeAll'), game.i18n.localize('vn.toolbar.minimizeAllShort'))}
+                ${btn('vn-minimize-self-button', 'fa-eye-slash', game.i18n.localize('vn.toolbar.minimizeSelf'), game.i18n.localize('vn.toolbar.minimizeSelfShort'))}
+                ${btn('vn-epicrolls-button', 'fa-dice-d20', game.i18n.localize('vn.toolbar.epicRolls'), game.i18n.localize('vn.toolbar.epicRollsShort'))}
+                <button type="button" class="vn-toolbar-btn vn-broadcast-button" title="${game.i18n.localize('vn.toolbar.broadcast')}" style="display:none"><i class="fas fa-broadcast-tower"></i><span class="vn-toolbar-label">${game.i18n.localize('vn.toolbar.broadcastShort')}</span></button>
+                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'), game.i18n.localize('vn.toolbar.chatShort'))}
+                ${btn('vn-close-button', 'fa-times', game.i18n.localize('vn.toolbar.closeScene'), game.i18n.localize('vn.toolbar.closeShort'))}
             </div>`
             : `<div class="vn-toolbar">
-                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'))}
-                ${btn('vn-close-button', 'fa-times', game.i18n.localize('vn.toolbar.closePlayer'))}
+                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'), game.i18n.localize('vn.toolbar.chatShort'))}
+                ${btn('vn-close-button', 'fa-times', game.i18n.localize('vn.toolbar.closePlayer'), game.i18n.localize('vn.toolbar.closeShort'))}
             </div>`;
 
         const maxBar = isGM ? `<div class="vn-maximized-actions">

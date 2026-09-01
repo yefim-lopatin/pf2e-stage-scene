@@ -476,12 +476,12 @@ class VisualNovelScene {
 
     _generateSoundsWrapHTML() {
         const cues = this.state.soundCues || [];
-        const btn = (cls, icon, title) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i></button>`;
+        const btn = (cls, icon, title, label) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i><span class="vn-toolbar-label">${label}</span></button>`;
         const items = cues.length
             ? cues.map(c => this._buildSoundItemHtml(c)).join('')
             : `<div class="vn-sounds-empty">${game.i18n.localize('vn.sounds.empty')}</div>`;
         return `<div class="vn-sounds-wrap"${!cues.length ? ' hidden' : ''}>
-            ${btn('vn-sounds-btn', 'fa-volume-up', game.i18n.localize('vn.sounds.buttonTitle'))}
+            ${btn('vn-sounds-btn', 'fa-volume-up', game.i18n.localize('vn.sounds.buttonTitle'), game.i18n.localize('vn.toolbar.soundsShort'))}
             <div class="vn-sounds-picker" hidden>
                 <div class="vn-sounds-picker-header"><i class="fas fa-music"></i> ${game.i18n.localize('vn.sounds.header')}</div>
                 <div class="vn-sounds-list">${items}</div>

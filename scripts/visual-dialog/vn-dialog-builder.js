@@ -169,6 +169,7 @@ export class VNDialogBuilder {
 
     _setupInteractions(root, isEdit) {
         this._setupDragAndDrop(root);
+        this._setupActorLibrary(root);
         this._scene._bgManager.attachListeners(root, (name) => this._scene._bgManager.refreshGallery(root, name));
         this._setupFavoriteHandlers(root);
         this._setupActorsDragAndDrop(root);
@@ -337,6 +338,40 @@ export class VNDialogBuilder {
             await scene.removeFromFavorites(tokenOpt.dataset.actorId);
             this._updateFavoritesDisplay(root);
         });
+    }
+
+    _setupActorLibrary(root) {
+        const search = root.querySelector('#vn-actor-search');
+        const library = root.querySelector('#vn-actor-library');
+        const available = root.querySelector('#available-tokens');
+        if (!library || !available) return;
+
+        const filter = () => {
+            const query = search?.value.trim().toLocaleLowerCase(game.i18n.lang) || '';
+            library.querySelectorAll('.vn-actor-library-item').forEach(item => {
+                item.hidden = Boolean(query) && !item.dataset.actorName.includes(query);
+            });
+        };
+        search?.addEventListener('input', filter, { signal: this._dialogAbortCtrl?.signal });
+
+        library.addEventListener('click', (event) => {
+            const button = event.target.closest('.vn-actor-library-item');
+            if (!button) return;
+            const actor = game.actors.get(button.dataset.actorId);
+            if (!actor) return;
+
+            available.querySelector('.vn-empty-hint')?.remove();
+            const existing = available.querySelector(`.vn-token-option[data-type="actor"][data-actor-id="${actor.id}"]`);
+            if (existing) {
+                existing.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                return;
+            }
+            const holder = document.createElement('div');
+            holder.innerHTML = VNDialogBuilder.generateActorToken(actor);
+            const option = holder.firstElementChild;
+            available.append(option);
+            this._makeDraggable(option);
+        }, { signal: this._dialogAbortCtrl?.signal });
     }
 
     _updateFavoritesDisplay(root) {
@@ -1404,6 +1439,9 @@ export class VNDialogBuilder {
         const currentSoundCues = sceneState?.soundCues || [];
 
         const favHTML = scene.favoriteActors.map(id => game.actors.get(id)).filter(Boolean).map(a => VNDialogBuilder.generateActorToken(a)).join('');
+        const worldActors = [...game.actors.values()].sort((a, b) => a.name.localeCompare(b.name, game.i18n.lang));
+        const actorLibraryHTML = worldActors.map(actor => VNDialogBuilder.generateActorLibraryItem(actor)).join('')
+            || `<div class="vn-empty-hint">${game.i18n.localize('vn.dialog.noWorldActors')}</div>`;
         const tokensHTML = tokens.map(t => `<div class="vn-token-option" draggable="true" data-token-id="${t.id}" data-actor-id="${t.actor.id}" data-type="token" data-visibility="visible">
             <button type="button" class="vn-token-hide-btn" title="${game.i18n.localize(VIS_TITLE.visible)}" draggable="false"><i class="fas fa-eye"></i></button>
             <div class="vn-token-preview"><img src="${t.actor.img || t.document.texture.src}" alt="${t.name}" loading="lazy"><div class="vn-token-name">${t.name}</div></div></div>`).join('');
@@ -1452,6 +1490,12 @@ export class VNDialogBuilder {
                         </div>
                     </div>
                     <div class="vn-dialog-sidebar">
+                        <div class="vn-actor-library-panel">
+                            <div class="vn-panel-header"><i class="fas fa-users"></i> ${game.i18n.localize('vn.dialog.worldActorsHeader')}</div>
+                            <input type="search" id="vn-actor-search" class="vn-actor-search" placeholder="${game.i18n.localize('vn.dialog.actorSearchPlaceholder')}">
+                            <div class="vn-actor-library" id="vn-actor-library">${actorLibraryHTML}</div>
+                            <div class="vn-favorites-hint"><i class="fas fa-hand-pointer"></i> ${game.i18n.localize('vn.dialog.actorLibraryHint')}</div>
+                        </div>
                         <div class="vn-favorites-panel">
                             <div class="vn-panel-header"><i class="fas fa-star"></i> ${game.i18n.localize('vn.dialog.favoritesHeader')}</div>
                             <div class="vn-favorites-section">${favHTML || `<div class="vn-favorites-empty"><i class="fas fa-arrow-down"></i> ${game.i18n.localize('vn.dialog.dragActorsFromJournal')}</div>`}</div>
@@ -2098,5 +2142,13 @@ export class VNDialogBuilder {
         return `<div class="vn-token-option" draggable="true" data-actor-id="${id}" data-token-id="" data-type="actor" data-visibility="visible">
             <button type="button" class="vn-token-hide-btn" title="${game.i18n.localize(VIS_TITLE.visible)}" draggable="false"><i class="fas fa-eye"></i></button>
             <div class="vn-token-preview"><img src="${img}" alt="${actor.name}" loading="lazy"><div class="vn-token-name">${actor.name}</div></div></div>`;
+    }
+
+    static generateActorLibraryItem(actor) {
+        const id = actor.id || actor._id;
+        const image = actor.img || actor.prototypeToken?.texture?.src || FALLBACK_AVATAR;
+        const name = actor.name || game.i18n.localize('vn.actor.unknown');
+        return `<button type="button" class="vn-actor-library-item" data-actor-id="${id}" data-actor-name="${name.toLocaleLowerCase(game.i18n.lang)}">
+            <img src="${image}" alt="" loading="lazy"><span>${name}</span><i class="fas fa-plus" aria-hidden="true"></i></button>`;
     }
 }

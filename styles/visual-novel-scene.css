@@ -317,15 +317,17 @@
     right: 14px;
     display: flex;
     gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 28px);
     z-index: 102;
 }
 
 .vn-toolbar-btn {
-    width: 40px;
-    height: 40px;
+    min-height: 36px;
     background: rgba(0, 0, 0, 0.4);
     border: 1.5px solid rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
+    border-radius: 8px;
     color: rgba(255, 255, 255, 0.7);
     font-size: 15px;
     cursor: pointer;
@@ -335,8 +337,12 @@
     justify-content: center;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    padding: 0;
+    padding: 0 10px;
+    gap: 6px;
+    white-space: nowrap;
 }
+
+.vn-toolbar-label { font-size: 12px; line-height: 1; }
 
 .vn-toolbar-btn:hover {
     background: rgba(255, 255, 255, 0.12);
@@ -1301,49 +1307,89 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 }
 
 /* ══════════════════════════════════════════════════════════
-   Speaking Indicator
+   Speaking Bubble
    ══════════════════════════════════════════════════════════ */
 
-.vn-speaking-indicator {
+.vn-speaking-bubble {
     position: absolute;
-    top: -4px;
+    top: -7px;
     left: 50%;
-    transform: translateX(-50%) translateY(-100%);
-    display: flex;
-    gap: 4px;
+    width: 34px;
+    height: 23px;
+    transform: translateX(-50%) translateY(-100%) scale(0.8);
+    background: rgba(255, 249, 238, 0.96);
+    border: 1px solid rgba(88, 61, 42, 0.45);
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
     z-index: 20;
     opacity: 0;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.18s ease, transform 0.18s ease;
     pointer-events: none;
 }
 
-.vn-character.active .vn-speaking-indicator { opacity: 1; }
-
-.vn-speaking-indicator span {
-    display: block;
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--vn-accent);
-    animation: vnSpeakingDot 1.4s ease-in-out infinite;
-    box-shadow: 0 0 8px var(--vn-accent-glow);
+.vn-speaking-bubble::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -7px;
+    width: 11px;
+    height: 11px;
+    background: inherit;
+    border-right: 1px solid rgba(88, 61, 42, 0.45);
+    border-bottom: 1px solid rgba(88, 61, 42, 0.45);
+    transform: translateX(-50%) rotate(45deg);
 }
 
-.vn-speaking-indicator span:nth-child(2) { animation-delay: 0.15s; }
-.vn-speaking-indicator span:nth-child(3) { animation-delay: 0.3s; }
-
-@keyframes vnSpeakingDot {
-    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-    30%           { transform: translateY(-6px); opacity: 1; }
+.vn-character.active .vn-speaking-bubble {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-100%) scale(1);
 }
 
-.vn-character.queue-priority-1 .vn-speaking-indicator span {
-    background: var(--vn-gold);
-    box-shadow: 0 0 8px rgba(235, 203, 139, 0.6);
+/* ── Actor library ── */
+
+.vn-actor-library-panel {
+    margin-bottom: 10px;
+    border: 1px solid rgba(235, 203, 139, 0.2);
+    border-radius: var(--vn-radius);
+    background: rgba(0, 0, 0, 0.1);
+    overflow: hidden;
 }
-.vn-character.queue-priority-2 .vn-speaking-indicator span {
-    background: var(--vn-danger);
-    box-shadow: 0 0 8px rgba(191, 97, 106, 0.6);
+
+.vn-actor-search {
+    box-sizing: border-box;
+    width: calc(100% - 16px);
+    margin: 8px;
+    min-height: 30px;
 }
+
+.vn-actor-library {
+    display: flex;
+    flex-direction: column;
+    max-height: 260px;
+    overflow-y: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.vn-actor-library-item {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    min-height: 38px;
+    padding: 5px 8px;
+    color: inherit;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+}
+
+.vn-actor-library-item:hover { background: rgba(235, 203, 139, 0.13); }
+.vn-actor-library-item img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.vn-actor-library-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vn-actor-library-item i { color: var(--vn-accent); }
 
 
 /* ══════════════════════════════════════════════════════════
@@ -3328,4 +3374,3 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 .vn-chat-panel .chat-form {
     flex: 0 0 auto;
 }
-
