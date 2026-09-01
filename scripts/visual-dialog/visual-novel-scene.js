@@ -976,8 +976,7 @@ class VisualNovelScene {
         });
 
         $(document).on(`click${ns}`, '.vn-epicrolls-button', () => {
-            if (!game.modules.get('epic-rolls-5e')?.active) return;
-            if (ui.EpicRolls5e?.GetRollData) new ui.EpicRolls5e.GetRollData({ actors: [], contestants: [], type: '', contest: null, options: {} }).render(true);
+            window.PF2eStageEpicRolls?.openFromScene(this);
         });
 
         this._soundHookId = Hooks.on('updatePlaylistSound', (soundDoc) => {

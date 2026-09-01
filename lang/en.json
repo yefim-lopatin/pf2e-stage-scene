@@ -66,5 +66,34 @@
     "bg": {
       "particlesForeground": "Particles on top"
     }
+  },
+  "epicRolls": {
+    "check": "Check",
+    "save": "Save",
+    "success": "Success",
+    "failure": "Failure",
+    "dc": "DC {dc}",
+    "complete-roll": "Conclude Epic Roll",
+    "epicRoll": "Epic Roll",
+    "gmOnly": "Only the GM can configure an Epic Roll.",
+    "settings": {
+      "introSound": { "name": "Intro sound", "hint": "Sound played when the Epic Roll begins" },
+      "successSound": { "name": "Success sound", "hint": "Sound played for success" },
+      "failureSound": { "name": "Failure sound", "hint": "Sound played for failure" },
+      "recapMessage": { "name": "Recap message", "hint": "Who can see the final Epic Roll recap", "options": { "none": "No one", "gm": "GM", "public": "Everyone" } },
+      "cleanupMessages": { "name": "Clean up roll messages", "hint": "Delete individual roll messages after the Epic Roll" }
+    },
+    "get-roll-data": {
+      "customFormula": "Custom formula", "customLabel": "Label", "customLabelNotes": "Custom text for the opening title", "formula": "Formula",
+      "title": "Configure Epic Roll", "startRoll": "Start Epic Roll", "macro": "Save as macro", "save-macro": "Epic Roll macro created for ",
+      "player": "Player character", "npc": "Non-player character", "selected": "Selected", "available": "Available", "rollOptions": "Roll options",
+      "dc": "DC", "VsDCNotes": "Difficulty Class for the roll", "showDC": "Show DC", "showDCNotes": "Make the DC visible to players",
+      "useAverage": "Use average", "useAverageNotes": "Use the group average to determine success", "allowReroll": "Allow rerolls", "allowRerollNotes": "Allow participants to roll again",
+      "showRollResults": "Show result text", "showRollResultsNotes": "Show the success or failure screen", "blindRoll": "Blind roll", "blindRollNotes": "Hide roll totals from players",
+      "hideNames": "Hide names", "hideNamesNotes": "Hide NPC names from players", "color": "Color", "colorNotes": "Color of the roll banner",
+      "autoColor": "Automatic color", "autoColorNotes": "Choose banner color from the roll type", "contest": "Contest", "contestInfo": "Right-click an actor or a roll type to mark it as an opponent",
+      "saveDefaultOptions": "Save as default", "saveDefaultOptionsNotification": "Current options saved as default",
+      "ERROR": { "noActors": "Select at least one actor", "noType": "Select a roll type", "noContestants": "A contested roll type requires at least one opponent" }
+    }
   }
 }

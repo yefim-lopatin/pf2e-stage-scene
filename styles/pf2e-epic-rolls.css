@@ -1,0 +1,27 @@
+:root {
+  --dnd5e-background-5: rgba(26, 23, 22, 0.92);
+  --dnd5e-border-dotted: 1px dashed rgba(66, 54, 40, 0.65);
+  --dnd5e-color-failure: #b6433d;
+  --dnd5e-color-failure-background: rgba(182, 67, 61, 0.16);
+  --dnd5e-color-failure-critical: #ff5b52;
+  --dnd5e-color-gold: #d9b35c;
+  --dnd5e-color-iron-gray: #282425;
+  --dnd5e-color-success: #4c9b66;
+  --dnd5e-color-success-background: rgba(76, 155, 102, 0.16);
+  --dnd5e-color-success-critical: #62cf83;
+  --dnd5e-font-modesto: var(--serif, "Vollkorn", Georgia, serif);
+  --dnd5e-font-roboto: var(--font-primary, Roboto, sans-serif);
+  --dnd5e-font-roboto-condensed: var(--font-primary, "Roboto Condensed", sans-serif);
+  --dnd5e-font-roboto-slab: var(--font-primary, Roboto, sans-serif);
+  --pf2e-stage-success: #62cf83;
+  --pf2e-stage-failure: #ff5b52;
+}
+
+/* Epic Rolls uses only resources bundled in this module. */
+.epic-roll-5e .epic-roll-container::before {
+  background-image: url("../assets/epic-rolls/banner-character.jpg");
+}
+
+.epic-roll-5e .epic-roll-container .actor-cards .actor-card:not(.vs) .roll-badge {
+  background-image: url("../assets/epic-rolls/level-badge.webp");
+}

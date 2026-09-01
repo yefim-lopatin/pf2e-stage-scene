@@ -3,6 +3,7 @@
 import { registerSettings, applyNameplateImage } from './settings.js';
 import { VisualNovelScene } from './visual-dialog/visual-novel-scene.js';
 import { VNPresets } from './visual-dialog/vn-state.js';
+import './epic-rolls/main.js';
 
 const MODULE_ID = 'pf2e-stage-scene';
 
