@@ -9,7 +9,7 @@ export class VNSocketHandler {
     static SCHEMA = {
         open:                 { gmOnly: true,  required: ['leftIds', 'centerIds', 'rightIds'] },
         close:                { gmOnly: true },
-        setSpeaker:           { gmOnly: true,  required: ['tokenId'] },
+        setSpeaker:           { gmOnly: false, required: ['tokenId'] },
         updateScene:          { gmOnly: true,  required: ['leftIds', 'centerIds', 'rightIds'] },
         minimize:             { gmOnly: true },
         maximize:             { gmOnly: true },
@@ -69,6 +69,12 @@ export class VNSocketHandler {
                 console.warn(`[VN] Missing fields for ${data.action}:`, missing);
                 return;
             }
+        }
+
+        const sender = game.users.get(data.sender);
+        if (data.action === 'setSpeaker' && !this._scene.canUserActivateSpeaker(p.tokenId, sender)) {
+            console.warn('[VN] User tried to activate a character they do not own.');
+            return;
         }
 
         vnLog('received:', data.action);

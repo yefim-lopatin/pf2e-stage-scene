@@ -130,7 +130,7 @@ class VNSceneHTML {
             }).join('')
         ).join('');
 
-        const btn = (cls, icon, title, label) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i><span class="vn-toolbar-label">${label}</span></button>`;
+        const btn = (cls, icon, title, label, unreadBadge = false) => `<button type="button" class="vn-toolbar-btn ${cls}" title="${title}"><i class="fas ${icon}"></i><span class="vn-toolbar-label">${label}</span>${unreadBadge ? '<span class="vn-chat-unread" hidden aria-live="polite">0</span>' : ''}</button>`;
 
         const toolbar = isGM
             ? `<div class="vn-toolbar">
@@ -148,11 +148,11 @@ class VNSceneHTML {
                 ${btn('vn-minimize-self-button', 'fa-eye-slash', game.i18n.localize('vn.toolbar.minimizeSelf'), game.i18n.localize('vn.toolbar.minimizeSelfShort'))}
                 ${btn('vn-epicrolls-button', 'fa-dice-d20', game.i18n.localize('vn.toolbar.epicRolls'), game.i18n.localize('vn.toolbar.epicRollsShort'))}
                 <button type="button" class="vn-toolbar-btn vn-broadcast-button" title="${game.i18n.localize('vn.toolbar.broadcast')}" style="display:none"><i class="fas fa-broadcast-tower"></i><span class="vn-toolbar-label">${game.i18n.localize('vn.toolbar.broadcastShort')}</span></button>
-                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'), game.i18n.localize('vn.toolbar.chatShort'))}
+                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'), game.i18n.localize('vn.toolbar.chatShort'), true)}
                 ${btn('vn-close-button', 'fa-times', game.i18n.localize('vn.toolbar.closeScene'), game.i18n.localize('vn.toolbar.closeShort'))}
             </div>`
             : `<div class="vn-toolbar">
-                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'), game.i18n.localize('vn.toolbar.chatShort'))}
+                ${btn('vn-chat-button', 'fa-comments', game.i18n.localize('vn.toolbar.showChat'), game.i18n.localize('vn.toolbar.chatShort'), true)}
                 ${btn('vn-close-button', 'fa-times', game.i18n.localize('vn.toolbar.closePlayer'), game.i18n.localize('vn.toolbar.closeShort'))}
             </div>`;
 

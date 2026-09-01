@@ -15,6 +15,9 @@ class VNChatPanel {
         this._originalNextSibling = null;
         this._restoreState = null;
         this._pendingSidebarRestore = null;
+        this._unreadCount = 0;
+
+        Hooks.on('createChatMessage', () => this._handleNewMessage());
     }
 
     get _$overlay() { return this._getOverlay(); }
@@ -52,6 +55,7 @@ class VNChatPanel {
 
             this._visible = true;
             panel.style.visibility = '';
+            this.resetUnread();
 
             this._$overlay
                 .find('.vn-chat-button')
@@ -137,6 +141,32 @@ class VNChatPanel {
 
         document.querySelectorAll('#vn-scene-overlay .vn-chat-button')
             .forEach(button => button.classList.remove('active'));
+    }
+
+    resetUnread() {
+        this._unreadCount = 0;
+        this._updateUnreadBadge();
+    }
+
+    _handleNewMessage() {
+        const overlay = this._$overlay?.[0];
+        if (!overlay) return;
+
+        if (this._visible) {
+            this._scrollToBottom(this._movedChat);
+            return;
+        }
+
+        this._unreadCount += 1;
+        this._updateUnreadBadge();
+    }
+
+    _updateUnreadBadge() {
+        const count = this._unreadCount;
+        this._$overlay?.find('.vn-chat-unread').each((_, badge) => {
+            badge.hidden = count === 0;
+            badge.textContent = count > 99 ? '99+' : String(count);
+        });
     }
 
     // ──────────────────────────────────────────────────────────

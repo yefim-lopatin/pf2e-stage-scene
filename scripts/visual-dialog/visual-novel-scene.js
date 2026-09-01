@@ -788,6 +788,7 @@ class VisualNovelScene {
 
         if (emit) this.stopSceneMusic(true);
         this._closeChatPanel();
+        this._chatPanel.resetUnread();
         this._cleanupListeners();
 
         const $ov = this.$overlay;
@@ -813,8 +814,19 @@ class VisualNovelScene {
     // Active Speaker
     // ══════════════════════════════════════════════════════════
 
+    _actorIdForSceneEntry(tokenId) {
+        const baseId = stripDupSuffix(String(tokenId));
+        return parseActorId(baseId) || canvas?.tokens?.get(baseId)?.actor?.id || null;
+    }
+
+    canUserActivateSpeaker(tokenId, user = game.user) {
+        if (user?.isGM) return true;
+        const actorId = this._actorIdForSceneEntry(tokenId);
+        return !!actorId && actorId === user?.character?.id;
+    }
+
     setActiveSpeaker(tokenId, emit = true, position = null) {
-        if (emit && !game.user.isGM) return;
+        if (emit && !this.canUserActivateSpeaker(tokenId)) return;
         const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
 
         if (!position) position = VisualNovelScene._sidePosition($char);
@@ -836,7 +848,7 @@ class VisualNovelScene {
 
         if (emit) {
             this.emitSocketEvent('setSpeaker', { tokenId, position, active: activated });
-            this._persistStateDebounced();
+            if (game.user.isGM) this._persistStateDebounced();
         }
     }
 
@@ -987,7 +999,8 @@ class VisualNovelScene {
         $(document).on(`click${ns}`, sel, (e) => {
             e.preventDefault(); e.stopPropagation();
             const tokenId = $(e.currentTarget).data('token-id');
-            if (e.ctrlKey) this.setExclusiveSpeaker(tokenId, true);
+            if (!this.canUserActivateSpeaker(tokenId)) return;
+            if (game.user.isGM && e.ctrlKey) this.setExclusiveSpeaker(tokenId, true);
             else this.setActiveSpeaker(tokenId, true);
         });
         $(document).on(`mousedown${ns}`, sel, (e) => {
