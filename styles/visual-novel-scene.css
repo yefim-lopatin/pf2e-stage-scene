@@ -1457,11 +1457,13 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     transition: z-index 0s;
 }
 
-/* Portraits in separate rows stay side by side without overlapping. */
+/* Portraits in one row overlap slightly, while the rows stay fixed. */
 .vn-row .vn-character {
-    margin-left: 0;
-    margin-right: 0;
+    margin-left: -0.65vw;
+    margin-right: -0.65vw;
 }
+.vn-row .vn-character:first-child { margin-left: 0; }
+.vn-row .vn-character:last-child { margin-right: 0; }
 
 
 /* ── Back row: smaller and behind the lower row ── */
