@@ -16,7 +16,7 @@
 
         <div class="actor-cards er5e-hidden">
             {{#each actors as |actor|}}
-            <div class="actor-card" data-uuid="{{actor.uuid}}">
+            <div class="actor-card {{#unless actor.hasPlayerOwner}}vn-epic-npc{{/unless}}" data-uuid="{{actor.uuid}}">
                 <h3>
                     {{#if actor.isOwner}}
                         {{actor.name}}
@@ -45,7 +45,7 @@
             <span class="actor-card vs">VS</span>
             {{/if}}
             {{#each contestants as |actor|}}
-            <div class="actor-card" data-uuid="{{actor.uuid}}">
+            <div class="actor-card {{#unless actor.hasPlayerOwner}}vn-epic-npc{{/unless}}" data-uuid="{{actor.uuid}}">
                 <h3>
                     {{#if actor.isOwner}}
                         {{actor.name}}

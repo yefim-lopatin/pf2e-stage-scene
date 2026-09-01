@@ -2,7 +2,7 @@
   "id": "pf2e-stage-scene",
   "title": "PF2e Stage Scene",
   "description": "<p>Визуальные сцены для диалогов: портреты актёров, фоны, эффекты, музыка и сохранённые пресеты.</p>",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "compatibility": {
     "minimum": "13",
     "verified": "14"

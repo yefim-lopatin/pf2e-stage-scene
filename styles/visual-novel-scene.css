@@ -570,6 +570,27 @@
 .vn-chat-panel .chat-message button:hover { background: linear-gradient(135deg, rgba(70, 91, 124, 1), rgba(45, 59, 85, 1)) !important; }
 .vn-chat-panel .chat-message button:focus-visible { outline: 2px solid var(--vn-gold); outline-offset: 2px; }
 
+/* PF2e checks are custom spans, not buttons. Their light system surface is
+   unreadable in the dark scene chat, so give them a dedicated dark control. */
+.vn-chat-panel .chat-message :is(a.inline-check, span[data-pf2-check]) {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 7px !important;
+    background: linear-gradient(135deg, rgba(50, 63, 86, 1), rgba(33, 42, 60, 1)) !important;
+    border: 1px solid rgba(136, 192, 208, 0.95) !important;
+    border-radius: 5px !important;
+    color: #f8fbff !important;
+    font-weight: 700;
+    line-height: 1.25;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 1px 5px rgba(0, 0, 0, 0.3);
+}
+
+.vn-chat-panel .chat-message :is(a.inline-check, span[data-pf2-check]) :is(i, span, .label) {
+    color: inherit !important;
+}
+
 /* Chat input area (v14: form.chat-form) */
 .vn-chat-panel .chat-form,
 .vn-chat-panel #chat-form {
@@ -1422,6 +1443,7 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
+    gap: 1.5vh;
 }
 
 /* Shared row styles */
@@ -1435,20 +1457,18 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     transition: z-index 0s;
 }
 
-/* Portraits inside rows: near-zero gap */
+/* Portraits in separate rows stay side by side without overlapping. */
 .vn-row .vn-character {
-    margin-left:  -1vw;
-    margin-right: -1vw;
+    margin-left: 0;
+    margin-right: 0;
 }
-.vn-row .vn-character:first-child { margin-left: 0; }
-.vn-row .vn-character:last-child  { margin-right: 0; }
 
 
-/* ── Back row: smaller, darker, overlaps forward ── */
+/* ── Back row: smaller and behind the lower row ── */
 
 .vn-back-row {
     z-index: 1;
-    margin-bottom: -12vh;
+    margin-bottom: 0;
     pointer-events: auto;
 }
 
@@ -1475,7 +1495,7 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 /* Для 3+ строк: каждый дополнительный уровень глубины ещё меньше */
 .vn-row-depth-2 {
     z-index: 0;
-    margin-bottom: -18vh;
+    margin-bottom: 0;
 }
 
 .vn-row-depth-2 .vn-character {
@@ -1498,34 +1518,18 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 /* ── Front row: normal, on top ── */
 
 .vn-front-row {
-    z-index: 2;
+    z-index: 20;
     position: relative;
 }
 
 .vn-front-row .vn-character {
-    z-index: 2;
+    z-index: 20;
 }
 
 
-/* ══════════════════════════════════════════════════════════
-   FIX: Back-row active speaker z-index promotion
-   ══════════════════════════════════════════════════════════
-   Проблема: .vn-back-row имеет z-index: 1, .vn-front-row — z-index: 2.
-   Из-за stacking context, даже z-index: 100 внутри back-row
-   не поднимет элемент выше front-row.
-
-   Решение: класс .vn-row-promoted поднимает z-index всей строки
-   выше front-row. Добавляется через JS при активации персонажа
-   в back-row.
-   ══════════════════════════════════════════════════════════ */
-
-.vn-row.vn-row-promoted {
-    z-index: 10 !important;
-}
-
-/* Активный персонаж в back-row */
+/* An active portrait in the upper row remains behind the lower row. */
 .vn-back-row .vn-character.active {
-    z-index: 100 !important;
+    z-index: 2 !important;
     transform: translateY(-2vh) scale(1.05) !important;
     transition: filter 0.3s, transform 0.3s, z-index 0s;
 }
@@ -1536,16 +1540,9 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     drop-shadow(0 5px 15px rgba(0, 0, 0, 0.6));
 }
 
-/* Когда back-row промоутнут, затемняем front-row */
-.vn-side.vn-multi-row:has(.vn-row-promoted)
-.vn-front-row .vn-character:not(.active) .vn-character-img {
-    filter: brightness(0.25) contrast(0.8) saturate(0.45);
-    transition: filter 0.3s;
-}
-
-/* Активный в front-row (без промоушена back) */
+/* Active portrait in the lower row always stays at the front. */
 .vn-front-row .vn-character.active {
-    z-index: 5;
+    z-index: 30;
 }
 
 

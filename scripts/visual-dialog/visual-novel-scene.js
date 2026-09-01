@@ -831,11 +831,6 @@ class VisualNovelScene {
 
         const activated = this.state.toggleSpeaker(tokenId, position);
         $char.toggleClass('active', activated);
-        const $parentRow = $char.closest('.vn-row');
-        if ($parentRow.length && $parentRow.hasClass('vn-back-row')) {
-            $parentRow.toggleClass('vn-row-promoted', activated);
-        }
-
         this._atmosphere?.onSpeakerChange(this.$overlay?.[0]?.querySelector('.vn-character.active') ?? null);
         this._reapplyCameraDof();
 
@@ -852,10 +847,6 @@ class VisualNovelScene {
             : speakers.filter(id => id !== tokenId);
         const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
         $char.toggleClass('active', active);
-        const $parentRow = $char.closest('.vn-row');
-        if ($parentRow.length && $parentRow.hasClass('vn-back-row')) {
-            $parentRow.toggleClass('vn-row-promoted', active);
-        }
         this._atmosphere?.onSpeakerChange(this.$overlay?.[0]?.querySelector('.vn-character.active') ?? null);
         this._reapplyCameraDof();
     }
@@ -872,9 +863,6 @@ class VisualNovelScene {
         if (!position) return;
         this.state.speakers[position] = [tokenId];
         $char.addClass('active');
-        const $row = $char.closest('.vn-row');
-        if ($row.hasClass('vn-back-row')) $row.addClass('vn-row-promoted');
-
         this._atmosphere?.onSpeakerChange($char[0]);
         this._reapplyCameraDof();
 

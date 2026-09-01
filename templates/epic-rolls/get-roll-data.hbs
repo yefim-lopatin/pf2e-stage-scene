@@ -8,7 +8,7 @@
             </h3>
             <ul class="selected-actors">
                 {{#each actors.selected as |actor|}}
-                <li class="actor {{#if actor.er5eContestant}}contestant{{/if}}" data-name="{{actor.name}}"
+                <li class="actor {{#unless actor.hasPlayerOwner}}vn-epic-npc{{/unless}} {{#if actor.er5eContestant}}contestant{{/if}}" data-name="{{actor.name}}"
                     data-uuid={{actor.uuid}}>
                     <img class="actor-icon" src="{{actor.img}}" alt="">
                     <div class="actor-info"><span class="title">{{actor.name}}</span><span class="subtitle">{{#if
@@ -28,7 +28,7 @@
             </h3>
             <ul class="unselected-actors">
                 {{#each actors.notSelected as |actor|}}
-                <li class="actor" data-name="{{actor.name}}" data-uuid={{actor.uuid}}>
+                <li class="actor {{#unless actor.hasPlayerOwner}}vn-epic-npc{{/unless}}" data-name="{{actor.name}}" data-uuid={{actor.uuid}}>
                     <img class="actor-icon" src="{{actor.img}}" alt="">
                     <div class="actor-info"><span class="title">{{actor.name}}</span><span class="subtitle">{{#if
                             actor.hasPlayerOwner}}{{localize
