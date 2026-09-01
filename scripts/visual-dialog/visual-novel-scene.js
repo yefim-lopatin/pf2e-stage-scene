@@ -177,7 +177,7 @@ class VisualNovelScene {
     _reapplyCameraDof() {
         const overlay = this.$overlay?.[0];
         if (!overlay) return;
-        const hasSpeaker = Object.values(this.state.speakers).some(Boolean);
+        const hasSpeaker = Object.values(this.state.speakers).some(speakers => Array.isArray(speakers) ? speakers.length > 0 : Boolean(speakers));
         const cameraOn = game.settings.get(VisualNovelScene.ID, 'cameraEnabled');
         const dofOn = game.settings.get(VisualNovelScene.ID, 'cameraDoF');
         overlay.classList.toggle('vn-camera-dof', hasSpeaker && cameraOn && dofOn);
@@ -299,7 +299,7 @@ class VisualNovelScene {
     setCharacterScale(tokenId, scale, emit = true) {
         if (emit && !game.user.isGM) return;
         const { MIN, MAX } = VisualNovelScene.DEFAULTS.SCALE_LIMITS;
-        scale = VisualNovelScene.clamp(Math.round(scale * 20) / 20, MIN, MAX);
+        scale = VisualNovelScene.clamp(Math.round(scale * 100) / 100, MIN, MAX);
         this.state.portraitScales[tokenId] = scale;
         const charEl = document.querySelector(`${VisualNovelScene.SEL.CHARACTER}[data-token-id="${tokenId}"]`);
         if (charEl) charEl.style.setProperty('--char-scale', scale);
@@ -645,7 +645,7 @@ class VisualNovelScene {
         document.querySelectorAll('#vn-scene-overlay .vn-character .vn-character-img').forEach(img => img.style.opacity = '0');
         this._bgManager.applyBackground(this.$overlay, this.state.background, this.state.backgroundOverlay);
 
-        const speakersSnapshot = { ...this.state.speakers };
+        const speakersSnapshot = Object.fromEntries(VNSceneState.POSITIONS.map(pos => [pos, [...(this.state.speakers[pos] ?? [])]]));
         setTimeout(() => {
             this.activateSceneListeners();
             this._applyAllPortraitTransforms();
@@ -663,7 +663,7 @@ class VisualNovelScene {
     updateSceneLayout(payload, emit = true) {
         if (!this.state.isActive) return;
 
-        const prevSpeakers = { ...this.state.speakers };
+        const prevSpeakers = Object.fromEntries(VNSceneState.POSITIONS.map(pos => [pos, [...(this.state.speakers[pos] ?? [])]]));
         const prevBackground = this.state.background;
 
         this.state.leftIds = payload.leftIds ? [...payload.leftIds] : [];
@@ -741,21 +741,17 @@ class VisualNovelScene {
             container.innerHTML = this._html.sideCharacters(tokens, position);
             container.classList.remove('empty');
 
-            const activeSpeaker = this.state.speakers[position];
+            const activeSpeakers = this.state.speakers[position] ?? [];
             container.querySelectorAll('.vn-character').forEach(charEl => {
                 const tid = charEl.dataset.tokenId;
                 const img = charEl.querySelector('.vn-character-img');
                 if (img) img.style.setProperty('--flip-x', this.state.flipped[tid] ? '-1' : '1');
                 if (addingIds.has(tid) && img) img.style.opacity = '0';
+                if (activeSpeakers.includes(tid)) charEl.classList.add('active');
             });
             // Force reflow so the browser registers initial CSS state before .active
             // is applied — without this, transitions don't play on freshly inserted elements
             container.offsetHeight;
-            if (activeSpeaker) {
-                container.querySelector(`.vn-character[data-token-id="${activeSpeaker}"]`)
-                    ?.classList.add('active');
-            }
-
             let idx = 0;
             container.querySelectorAll('.vn-character').forEach(charEl => {
                 if (addingIds.has(charEl.dataset.tokenId)) {
@@ -770,10 +766,11 @@ class VisualNovelScene {
 
     _restoreSpeakers(prevSpeakers) {
         for (const pos of VNSceneState.POSITIONS) {
-            const sid = prevSpeakers[pos];
-            this.state.speakers[pos] = null;
-            if (sid && this.state.getIdsForPosition(pos).includes(sid)) {
-                this.setActiveSpeaker(sid, false, pos);
+            const speakerIds = Array.isArray(prevSpeakers[pos]) ? prevSpeakers[pos] : (prevSpeakers[pos] ? [prevSpeakers[pos]] : []);
+            this.state.speakers[pos] = [];
+            const validSpeakerIds = speakerIds.filter(id => this.state.getIdsForPosition(pos).includes(id));
+            if (validSpeakerIds.length) {
+                validSpeakerIds.forEach(id => this.setActiveSpeaker(id, false, pos));
             } else {
                 $(`.vn-${pos}-side .vn-character`).removeClass('active');
                 $(`.vn-${pos}-side .vn-row`).removeClass('vn-row-promoted');
@@ -833,17 +830,13 @@ class VisualNovelScene {
         if (!position) return;
 
         const activated = this.state.toggleSpeaker(tokenId, position);
-        $(`.vn-${position}-side .vn-character`).removeClass('active');
-        const $side = $(`.vn-${position}-side`);
-        $side.find('.vn-row').removeClass('vn-row-promoted');
-
-        if (activated) {
-            $char.addClass('active');
-            const $parentRow = $char.closest('.vn-row');
-            if ($parentRow.length && $parentRow.hasClass('vn-back-row')) $parentRow.addClass('vn-row-promoted');
+        $char.toggleClass('active', activated);
+        const $parentRow = $char.closest('.vn-row');
+        if ($parentRow.length && $parentRow.hasClass('vn-back-row')) {
+            $parentRow.toggleClass('vn-row-promoted', activated);
         }
 
-        this._atmosphere?.onSpeakerChange(activated ? $char[0] : null);
+        this._atmosphere?.onSpeakerChange(this.$overlay?.[0]?.querySelector('.vn-character.active') ?? null);
         this._reapplyCameraDof();
 
         if (emit) {
@@ -853,32 +846,31 @@ class VisualNovelScene {
     }
 
     _applyExplicitSpeaker(tokenId, position, active) {
-        this.state.speakers[position] = active ? tokenId : null;
-        $(`.vn-${position}-side .vn-character`).removeClass('active');
-        $(`.vn-${position}-side .vn-row`).removeClass('vn-row-promoted');
-        if (active) {
-            const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
-            $char.addClass('active');
-            const $parentRow = $char.closest('.vn-row');
-            if ($parentRow.length && $parentRow.hasClass('vn-back-row')) $parentRow.addClass('vn-row-promoted');
-            this._atmosphere?.onSpeakerChange($char[0]);
-        } else {
-            this._atmosphere?.onSpeakerChange(null);
+        const speakers = this.state.speakers[position] ??= [];
+        this.state.speakers[position] = active
+            ? [...new Set([...speakers, tokenId])]
+            : speakers.filter(id => id !== tokenId);
+        const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
+        $char.toggleClass('active', active);
+        const $parentRow = $char.closest('.vn-row');
+        if ($parentRow.length && $parentRow.hasClass('vn-back-row')) {
+            $parentRow.toggleClass('vn-row-promoted', active);
         }
+        this._atmosphere?.onSpeakerChange(this.$overlay?.[0]?.querySelector('.vn-character.active') ?? null);
         this._reapplyCameraDof();
     }
 
     setExclusiveSpeaker(tokenId, emit = true) {
         if (emit && !game.user.isGM) return;
         for (const pos of VNSceneState.POSITIONS) {
-            this.state.speakers[pos] = null;
+            this.state.speakers[pos] = [];
             $(`.vn-${pos}-side .vn-character`).removeClass('active');
             $(`.vn-${pos}-side .vn-row`).removeClass('vn-row-promoted');
         }
         const $char = $(`.vn-character[data-token-id="${tokenId}"]`);
         const position = VisualNovelScene._sidePosition($char);
         if (!position) return;
-        this.state.speakers[position] = tokenId;
+        this.state.speakers[position] = [tokenId];
         $char.addClass('active');
         const $row = $char.closest('.vn-row');
         if ($row.hasClass('vn-back-row')) $row.addClass('vn-row-promoted');
@@ -1002,18 +994,16 @@ class VisualNovelScene {
             if (game.user.isGM && e.ctrlKey) this.setExclusiveSpeaker(tokenId, true);
             else this.setActiveSpeaker(tokenId, true);
         });
-        $(document).on(`mousedown${ns}`, sel, (e) => {
-            if (!game.user.isGM || e.button !== 1) return;
-            e.preventDefault(); e.stopImmediatePropagation();
-            const tokenId = $(e.currentTarget).data('token-id');
-            const newFlip = !this.state.flipped[tokenId];
-            this.applyFlip(tokenId, newFlip);
-            this.emitSocketEvent('flipPortrait', { tokenId, flip: newFlip });
-        });
         $(document).on(`contextmenu${ns}`, sel, (e) => {
             if (!game.user.isGM) return;
             e.preventDefault(); e.stopImmediatePropagation();
             const tokenId = $(e.currentTarget).data('token-id');
+            if (e.shiftKey) {
+                const newFlip = !this.state.flipped[tokenId];
+                this.applyFlip(tokenId, newFlip);
+                this.emitSocketEvent('flipPortrait', { tokenId, flip: newFlip });
+                return;
+            }
             const current = this.state.visibility[tokenId] ?? 'visible';
             const cycle = VNSceneState.VISIBILITY_CYCLE;
             const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
@@ -1026,7 +1016,7 @@ class VisualNovelScene {
             e.preventDefault(); e.stopImmediatePropagation();
             const tokenId = charEl.dataset.tokenId;
             const current = this.state.portraitScales[tokenId] ?? 1;
-            const delta = e.deltaY > 0 ? -0.05 : 0.05;
+            const delta = e.deltaY > 0 ? -0.01 : 0.01;
             this.setCharacterScale(tokenId, current + delta);
         };
         document.addEventListener('wheel', this._wheelListener, { passive: false });

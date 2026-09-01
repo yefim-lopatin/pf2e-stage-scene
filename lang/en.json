@@ -46,7 +46,7 @@
       "d_click": "set active speaker",
       "k_ctrlClick": "Ctrl+LMB",
       "d_ctrlClick": "exclusive speaker",
-      "k_midClick": "MMB",
+      "k_midClick": "Shift + RMB",
       "d_midClick": "flip portrait",
       "k_rightClick": "RMB",
       "d_rightClick": "visibility: shown → hidden → name hidden",
@@ -61,7 +61,8 @@
       "worldActorsHeader": "World actors",
       "actorSearchPlaceholder": "Find an actor…",
       "actorLibraryHint": "Click to add an actor to available characters",
-      "noWorldActors": "There are no actors in this world"
+      "noWorldActors": "There are no actors in this world",
+      "actorNoFolder": "No folder"
     },
     "bg": {
       "particlesForeground": "Particles on top"

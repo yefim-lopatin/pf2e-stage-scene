@@ -351,6 +351,15 @@ export class VNDialogBuilder {
             library.querySelectorAll('.vn-actor-library-item').forEach(item => {
                 item.hidden = Boolean(query) && !item.dataset.actorName.includes(query);
             });
+            library.querySelectorAll('.vn-actor-folder').forEach(folder => {
+                const hasMatches = [...folder.querySelectorAll('.vn-actor-library-item')].some(item => !item.hidden);
+                folder.hidden = !hasMatches;
+                if (query && hasMatches) folder.open = true;
+            });
+            const ungrouped = library.querySelector('.vn-actor-ungrouped');
+            if (ungrouped) {
+                ungrouped.hidden = ![...ungrouped.querySelectorAll('.vn-actor-library-item')].some(item => !item.hidden);
+            }
         };
         search?.addEventListener('input', filter, { signal: this._dialogAbortCtrl?.signal });
 
@@ -1440,8 +1449,7 @@ export class VNDialogBuilder {
 
         const favHTML = scene.favoriteActors.map(id => game.actors.get(id)).filter(Boolean).map(a => VNDialogBuilder.generateActorToken(a)).join('');
         const worldActors = [...game.actors.values()].sort((a, b) => a.name.localeCompare(b.name, game.i18n.lang));
-        const actorLibraryHTML = worldActors.map(actor => VNDialogBuilder.generateActorLibraryItem(actor)).join('')
-            || `<div class="vn-empty-hint">${game.i18n.localize('vn.dialog.noWorldActors')}</div>`;
+        const actorLibraryHTML = this._generateActorLibrary(worldActors);
         const tokensHTML = tokens.map(t => `<div class="vn-token-option" draggable="true" data-token-id="${t.id}" data-actor-id="${t.actor.id}" data-type="token" data-visibility="visible">
             <button type="button" class="vn-token-hide-btn" title="${game.i18n.localize(VIS_TITLE.visible)}" draggable="false"><i class="fas fa-eye"></i></button>
             <div class="vn-token-preview"><img src="${t.actor.img || t.document.texture.src}" alt="${t.name}" loading="lazy"><div class="vn-token-name">${t.name}</div></div></div>`).join('');
@@ -1520,6 +1528,50 @@ export class VNDialogBuilder {
             <div class="vn-position-header"><i class="fas ${icon}"></i><span>${title}</span>${orderInfo ? `<span class="vn-order-info">${orderInfo}</span>` : ''}</div>
             <div class="vn-token-selector" id="${position}-tokens" data-position="${position}"><div class="vn-drop-hint"><i class="fas fa-hand-pointer"></i></div></div>
         </div>`;
+    }
+
+    _generateActorLibrary(actors) {
+        if (!actors.length) return `<div class="vn-empty-hint">${game.i18n.localize('vn.dialog.noWorldActors')}</div>`;
+
+        const folders = [...game.folders]
+            .filter(folder => folder.type === 'Actor')
+            .sort((a, b) => a.name.localeCompare(b.name, game.i18n.lang));
+        const actorsByFolder = new Map(folders.map(folder => [folder.id, []]));
+        const ungrouped = [];
+
+        for (const actor of actors) {
+            const actorFolderId = typeof actor.folder === 'string' ? actor.folder : actor.folder?.id;
+            const bucket = actorsByFolder.get(actorFolderId);
+            (bucket ?? ungrouped).push(actor);
+        }
+
+        const childrenByFolder = new Map(folders.map(folder => [folder.id, []]));
+        const rootFolders = [];
+        for (const folder of folders) {
+            const parent = typeof folder.folder === 'string' ? folder.folder : folder.folder?.id;
+            if (parent && childrenByFolder.has(parent)) childrenByFolder.get(parent).push(folder);
+            else rootFolders.push(folder);
+        }
+
+        const renderFolder = (folder) => {
+            const children = childrenByFolder.get(folder.id) ?? [];
+            const folderActors = actorsByFolder.get(folder.id) ?? [];
+            const contents = [
+                ...folderActors.map(actor => VNDialogBuilder.generateActorLibraryItem(actor)),
+                ...children.map(renderFolder),
+            ].join('');
+            if (!contents) return '';
+            return `<details class="vn-actor-folder" open>
+                <summary><i class="fas fa-folder" aria-hidden="true"></i><span>${folder.name}</span><i class="fas fa-chevron-down vn-chevron" aria-hidden="true"></i></summary>
+                <div class="vn-actor-folder-content">${contents}</div>
+            </details>`;
+        };
+
+        const folderHTML = rootFolders.map(renderFolder).join('');
+        const ungroupedHTML = ungrouped.length
+            ? `<section class="vn-actor-ungrouped"><div class="vn-actor-ungrouped-title"><i class="fas fa-user" aria-hidden="true"></i> ${game.i18n.localize('vn.dialog.actorNoFolder')}</div>${ungrouped.map(actor => VNDialogBuilder.generateActorLibraryItem(actor)).join('')}</section>`
+            : '';
+        return `${folderHTML}${ungroupedHTML}`;
     }
 
     // ══════════════════════════════════════════════════════════

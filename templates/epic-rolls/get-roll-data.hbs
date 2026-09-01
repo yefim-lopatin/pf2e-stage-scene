@@ -4,7 +4,7 @@
         <div class="section-border">
             <h3>
                 <i class="fa-duotone fa-square-check"></i>
-                <span class="roboto-upper">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.selected"}}</span>
+                <span class="roboto-upper">{{localize "epicRolls.get-roll-data.selected"}}</span>
             </h3>
             <ul class="selected-actors">
                 {{#each actors.selected as |actor|}}
@@ -13,8 +13,8 @@
                     <img class="actor-icon" src="{{actor.img}}" alt="">
                     <div class="actor-info"><span class="title">{{actor.name}}</span><span class="subtitle">{{#if
                             actor.hasPlayerOwner}}{{localize
-                            "pf2e-stage-scene.epicRolls.get-roll-data.player"}}{{else}}{{localize
-                            "pf2e-stage-scene.epicRolls.get-roll-data.npc"}}{{/if}}</span></div>
+                            "epicRolls.get-roll-data.player"}}{{else}}{{localize
+                            "epicRolls.get-roll-data.npc"}}{{/if}}</span></div>
                     <i class="add-remove fa-solid fa-minus"></i>
                 </li>
                 {{/each}}
@@ -23,7 +23,7 @@
         <div class="section-border">
             <h3>
                 <i class="fa-duotone fa-users"></i>
-                <span class="roboto-upper">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.available"}}</span>
+                <span class="roboto-upper">{{localize "epicRolls.get-roll-data.available"}}</span>
                 <input type="search" name="" id="" placeholder="{{localize "SIDEBAR.Search" types=" " }}">
             </h3>
             <ul class="unselected-actors">
@@ -32,8 +32,8 @@
                     <img class="actor-icon" src="{{actor.img}}" alt="">
                     <div class="actor-info"><span class="title">{{actor.name}}</span><span class="subtitle">{{#if
                             actor.hasPlayerOwner}}{{localize
-                            "pf2e-stage-scene.epicRolls.get-roll-data.player"}}{{else}}{{localize
-                            "pf2e-stage-scene.epicRolls.get-roll-data.npc"}}{{/if}}</span></div>
+                            "epicRolls.get-roll-data.player"}}{{else}}{{localize
+                            "epicRolls.get-roll-data.npc"}}{{/if}}</span></div>
                     <i class="add-remove fa-solid fa-plus"></i>
                 </li>
                 {{/each}}
@@ -60,12 +60,12 @@
                 {{/each}}
                 <h3>
                     <i class="fa-duotone fa-dice-d20"></i>
-                    <span class="roboto-upper">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.customFormula"}}</span>
+                    <span class="roboto-upper">{{localize "epicRolls.get-roll-data.customFormula"}}</span>
                 </h3>
                 <ul>
-                    <li class="roll custom-roll {{#if rollData.options.formula}}selected{{/if}}" data-type="custom" data-key="formula" data-name="{{localize "pf2e-stage-scene.epicRolls.get-roll-data.formula"}}">
+                    <li class="roll custom-roll {{#if rollData.options.formula}}selected{{/if}}" data-type="custom" data-key="formula" data-name="{{localize "epicRolls.get-roll-data.formula"}}">
                         <div class="form-group" data-name="formula">
-                            <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.formula"}}</label>
+                            <label for="">{{localize "epicRolls.get-roll-data.formula"}}</label>
                             <input type="text" name="customFormula" id="" placeholder="1d100" value="{{rollData.options.formula}}">
                         </div>
                     </li>
@@ -79,81 +79,81 @@
             <div class="roll-options-wrapper">
                 <h3>
                     <i class="fa-solid fa-dice-d20"></i>
-                    <span class="roboto-upper">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.rollOptions"}}</span>
-                    <i data-tooltip-direction="UP" data-tooltip="{{localize "pf2e-stage-scene.epicRolls.get-roll-data.saveDefaultOptions"}}" class="fa-duotone fa-floppy-disk save-default"></i>
+                    <span class="roboto-upper">{{localize "epicRolls.get-roll-data.rollOptions"}}</span>
+                    <i data-tooltip-direction="UP" data-tooltip="{{localize "epicRolls.get-roll-data.saveDefaultOptions"}}" class="fa-duotone fa-floppy-disk save-default"></i>
                 </h3>
                 <div class="section-padding">
                     <div class="form-group" data-name="DC">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.dc"}}</label>
-                        <input type="number" placeholder="{{localize "pf2e-stage-scene.epicRolls.get-roll-data.dc"}}" value="{{rollData.options.DC}}">
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.VsDCNotes"}}</p>
+                        <label for="">{{localize "epicRolls.get-roll-data.dc"}}</label>
+                        <input type="number" placeholder="{{localize "epicRolls.get-roll-data.dc"}}" value="{{rollData.options.DC}}">
+                        <p class="hint">{{localize "epicRolls.get-roll-data.VsDCNotes"}}</p>
                     </div>
                     <div class="form-group" data-name="showDC">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.showDC"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.showDC"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.showDC}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.showDCNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.showDCNotes"}}</p>
                     </div>
                     <div class="form-group" data-name="useAverage">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.useAverage"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.useAverage"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.useAverage}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.useAverageNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.useAverageNotes"}}</p>
                     </div>
 
                     <div class="form-group" data-name="allowReroll">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.allowReroll"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.allowReroll"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.allowReroll}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.allowRerollNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.allowRerollNotes"}}</p>
                     </div>
 
                     <div class="form-group" data-name="showRollResults">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.showRollResults"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.showRollResults"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.showRollResults}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.showRollResultsNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.showRollResultsNotes"}}</p>
                     </div>
 
                     <div class="form-group" data-name="blindRoll">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.blindRoll"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.blindRoll"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.blindRoll}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.blindRollNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.blindRollNotes"}}</p>
                     </div>
 
                     <div class="form-group" data-name="hideNames">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.hideNames"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.hideNames"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.hideNames}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.hideNamesNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.hideNamesNotes"}}</p>
                     </div>
 
                     <div class="form-group" data-name="autoColor">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.autoColor"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.autoColor"}}</label>
                         <i
                             class="toggle fad {{#if rollData.options.autoColor}}fa-toggle-on{{else}}fa-toggle-off{{/if}}"></i>
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.autoColorNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.autoColorNotes"}}</p>
                     </div>
 
                     <div class="form-group" data-name="color" style="border: none">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.color"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.color"}}</label>
                         <input type="range" id="color" min="0" max="360" value="{{rollData.options.color}}">
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.colorNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.colorNotes"}}</p>
                         <p class="notes color-preview" style='background: transparent url("modules/pf2e-stage-scene/assets/epic-rolls/banner-character.jpg") no-repeat center / cover; width: 100%; height: 1rem;'></p>
                     </div>
 
                     <div class="form-group" data-name="customLabel">
-                        <label for="">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.customLabel"}}</label>
+                        <label for="">{{localize "epicRolls.get-roll-data.customLabel"}}</label>
                         <input type="text" name="customLabel" id="" value="{{rollData.options.customLabel}}">
-                        <p class="hint">{{localize "pf2e-stage-scene.epicRolls.get-roll-data.customLabelNotes"}}</p>
+                        <p class="hint">{{localize "epicRolls.get-roll-data.customLabelNotes"}}</p>
                     </div>
 
                     <p class="notes contest-info">
                         <i class="fa-duotone fa-swords"></i><strong> {{localize
-                            "pf2e-stage-scene.epicRolls.get-roll-data.contest"}}</strong>
+                            "epicRolls.get-roll-data.contest"}}</strong>
                         <br>
-                        {{localize "pf2e-stage-scene.epicRolls.get-roll-data.contestInfo"}}
+                        {{localize "epicRolls.get-roll-data.contestInfo"}}
                     </p>
                 </div>
             </div>

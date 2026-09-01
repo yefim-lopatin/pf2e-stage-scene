@@ -27,7 +27,7 @@ function getStageRollData(scene) {
 
 function openFromScene(scene) {
     if (!game.user.isGM) {
-        return ui.notifications.warn(game.i18n.localize(`${MODULE_ID}.epicRolls.gmOnly`));
+        return ui.notifications.warn(game.i18n.localize(`epicRolls.gmOnly`));
     }
     const data = getStageRollData(scene);
     const options = foundry.utils.deepClone(game.settings.get(MODULE_ID, "defaultOptions"));

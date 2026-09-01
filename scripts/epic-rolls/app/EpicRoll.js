@@ -190,7 +190,7 @@ export class EpicRoll extends HandlebarsApplication {
         //display end text
         if (this.rollOptions.showRollResults && isSuccess !== undefined) {
             const outroText = html.querySelector(".outro-text");
-            outroText.textContent = game.i18n.localize(`${MODULE_ID}.epicRolls.${isSuccess ? "success" : "failure"}`) + "!";
+            outroText.textContent = game.i18n.localize(`epicRolls.${isSuccess ? "success" : "failure"}`) + "!";
             outroText.classList.remove("er5e-hidden");
             //play fade in animation on outro text
             outroText.animate([{ opacity: 0 }, { opacity: 1 }], {
@@ -425,7 +425,7 @@ export class EpicRoll extends HandlebarsApplication {
 
         if (recapSetting === "none") return;
 
-        const resultLabel = game.i18n.localize(`${MODULE_ID}.epicRolls.${success ? "success" : "failure"}`);
+        const resultLabel = game.i18n.localize(`epicRolls.${success ? "success" : "failure"}`);
 
         const actorEntries = [];
         const contestantEntries = [];
@@ -466,7 +466,7 @@ export class EpicRoll extends HandlebarsApplication {
         ChatMessage.create({
             user: game.user.id,
             whisper: recapSetting === "gm" || this.rollOptions.hideNames ? ChatMessage.getWhisperRecipients("GM") : null,
-            speaker: { alias: game.i18n.localize(`${MODULE_ID}.epicRolls.epicRoll`) },
+            speaker: { alias: game.i18n.localize(`epicRolls.epicRoll`) },
             content: html,
         });
     }
@@ -490,15 +490,15 @@ export class EpicRoll extends HandlebarsApplication {
         const getLabel = (key) => {
             const [type, statistic] = key.split(".");
             if (type === "initiative") return game.i18n.localize("COMBAT.InitiativeRoll");
-            if (type === "perception") return `${game.i18n.localize("PF2E.PerceptionLabel")} ${game.i18n.localize(`${MODULE_ID}.epicRolls.check`)}`;
-            if (type === "skill") return `${game.i18n.localize(CONFIG.PF2E.skills[statistic]?.label ?? statistic)} ${game.i18n.localize(`${MODULE_ID}.epicRolls.check`)}`;
-            if (type === "save") return `${game.i18n.localize(CONFIG.PF2E.saves[statistic] ?? statistic)} ${game.i18n.localize(`${MODULE_ID}.epicRolls.save`)}`;
-            if (type === "custom") return `${options.formula} ${game.i18n.localize(`${MODULE_ID}.epicRolls.check`)}`;
+            if (type === "perception") return `${game.i18n.localize("PF2E.PerceptionLabel")} ${game.i18n.localize(`epicRolls.check`)}`;
+            if (type === "skill") return `${game.i18n.localize(CONFIG.PF2E.skills[statistic]?.label ?? statistic)} ${game.i18n.localize(`epicRolls.check`)}`;
+            if (type === "save") return `${game.i18n.localize(CONFIG.PF2E.saves[statistic] ?? statistic)} ${game.i18n.localize(`epicRolls.save`)}`;
+            if (type === "custom") return `${options.formula} ${game.i18n.localize(`epicRolls.check`)}`;
             return statistic ?? key;
         };
 
         const label = vs ? `${getLabel(rollKey)} vs ${getLabel(vs)}` : getLabel(rollKey);
-        return Number.isNumeric(dc) && !vs ? `${game.i18n.format(`${MODULE_ID}.epicRolls.dc`, { dc })} ${label}` : label;
+        return Number.isNumeric(dc) && !vs ? `${game.i18n.format(`epicRolls.dc`, { dc })} ${label}` : label;
     }
 
     async close(...args) {

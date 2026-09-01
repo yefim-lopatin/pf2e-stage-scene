@@ -27,6 +27,7 @@ export class GetRollData extends HandlebarsApplication {
         return mergeClone(super.DEFAULT_OPTIONS, {
             tag: "form",
             window: {
+                title: "epicRolls.get-roll-data.title",
                 frame: true,
                 positioned: true,
                 contentClasses: ["standard-form"],
@@ -61,13 +62,13 @@ export class GetRollData extends HandlebarsApplication {
             type: "button",
             action: "startEpicRoll",
             icon: "fa-duotone fa-dice-d20",
-            label: `${MODULE_ID}.epicRolls.get-roll-data.startRoll`,
+            label: "epicRolls.get-roll-data.startRoll",
         };
         const macroButton = {
             type: "button",
             action: "saveToMacro",
             icon: "fa-duotone fa-terminal",
-            label: `${MODULE_ID}.epicRolls.get-roll-data.macro`,
+            label: "epicRolls.get-roll-data.macro",
         };
         return { actors, rolls, rollData: this.rollData, buttons: [epicRollButton, macroButton] };
     }
@@ -215,7 +216,7 @@ export class GetRollData extends HandlebarsApplication {
         const data = this._compileRollData(true);
         const options = data.options;
         await setSetting("defaultOptions", options);
-        ui.notifications.info(game.i18n.localize(`${MODULE_ID}.${this.APP_ID}.saveDefaultOptionsNotification`));
+        ui.notifications.info(game.i18n.localize("epicRolls.get-roll-data.saveDefaultOptionsNotification"));
     }
 
     _onAddRemove(event) {
@@ -289,7 +290,7 @@ export class GetRollData extends HandlebarsApplication {
             scope: "global",
             command: `ui.PF2eStageEpicRolls.requestRoll(${JSON.stringify(rollData)})`,
         });
-        ui.notifications.info(game.i18n.localize(`${MODULE_ID}.${this.APP_ID}.save-macro`) + rollLabel);
+        ui.notifications.info(game.i18n.localize("epicRolls.get-roll-data.save-macro") + rollLabel);
     }
 
     static async startEpicRoll() {
@@ -356,7 +357,7 @@ export class GetRollData extends HandlebarsApplication {
         }
 
         if (error) {
-            ui.notifications.error(game.i18n.localize(`${MODULE_ID}.${this.APP_ID}.ERROR.${error}`));
+            ui.notifications.error(game.i18n.localize(`epicRolls.get-roll-data.ERROR.${error}`));
             return null;
         }
 

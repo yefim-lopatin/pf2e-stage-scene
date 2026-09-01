@@ -134,14 +134,14 @@
 .vn-character:not(.active):not(.vn-entering):not(.vn-exiting) .vn-character-img {
     scale: calc(var(--flip-x, 1) * 0.97) 0.97;
     translate: 0 4px;
-    filter: brightness(0.45) saturate(0.25) blur(1px)
+    filter: brightness(0.65) saturate(0.55) blur(0.35px)
     drop-shadow(0 5px 15px rgba(0, 0, 0, 0.8)) !important;
     animation: none !important;
 }
 
 /* Depth of Field — усиленное размытие при активной камере */
 #vn-scene-overlay.vn-camera-dof .vn-character:not(.active):not(.vn-entering):not(.vn-exiting):not(.vn-character-hidden) .vn-character-img {
-    filter: brightness(0.38) saturate(0.18) blur(2.5px)
+    filter: brightness(0.55) saturate(0.45) blur(1px)
         drop-shadow(0 5px 15px rgba(0, 0, 0, 0.85)) !important;
 }
 
@@ -379,6 +379,5 @@
     opacity: 0.7;
     font-style: italic;
 }
-
 
 

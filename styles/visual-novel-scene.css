@@ -1346,45 +1346,6 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     display: none;
 }
 
-/* ══════════════════════════════════════════════════════════
-   Speaking Bubble
-   ══════════════════════════════════════════════════════════ */
-
-.vn-speaking-bubble {
-    position: absolute;
-    top: -7px;
-    left: 50%;
-    width: 34px;
-    height: 23px;
-    transform: translateX(-50%) translateY(-100%) scale(0.8);
-    background: rgba(255, 249, 238, 0.96);
-    border: 1px solid rgba(88, 61, 42, 0.45);
-    border-radius: 12px;
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
-    z-index: 20;
-    opacity: 0;
-    transition: opacity 0.18s ease, transform 0.18s ease;
-    pointer-events: none;
-}
-
-.vn-speaking-bubble::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    bottom: -7px;
-    width: 11px;
-    height: 11px;
-    background: inherit;
-    border-right: 1px solid rgba(88, 61, 42, 0.45);
-    border-bottom: 1px solid rgba(88, 61, 42, 0.45);
-    transform: translateX(-50%) rotate(45deg);
-}
-
-.vn-character.active .vn-speaking-bubble {
-    opacity: 1;
-    transform: translateX(-50%) translateY(-100%) scale(1);
-}
-
 /* ── Actor library ── */
 
 .vn-actor-library-panel {
@@ -1430,6 +1391,26 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 .vn-actor-library-item img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
 .vn-actor-library-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vn-actor-library-item i { color: var(--vn-accent); }
+
+.vn-actor-folder { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.vn-actor-folder > summary,
+.vn-actor-ungrouped-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 34px;
+    padding: 6px 8px;
+    color: var(--vn-accent);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 600;
+    list-style: none;
+}
+.vn-actor-folder > summary::-webkit-details-marker { display: none; }
+.vn-actor-folder > summary .vn-chevron { margin-left: auto; transition: transform 0.15s ease; }
+.vn-actor-folder:not([open]) > summary .vn-chevron { transform: rotate(-90deg); }
+.vn-actor-folder-content { padding-left: 8px; }
+.vn-actor-ungrouped { border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 
 
 /* ══════════════════════════════════════════════════════════

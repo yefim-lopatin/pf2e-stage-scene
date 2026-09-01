@@ -75,7 +75,6 @@ class VNSceneHTML {
         const flipX = state.flipped[tokenId] ? '-1' : '1';
 
         return `<div class="vn-character ${rowClass} ${hiddenClass}" data-token-id="${tokenId}" data-name="${token.name}" style="${charStyle}">
-            <div class="vn-speaking-bubble" aria-hidden="true"></div>
             <img class="vn-character-img" src="${imgSrc}" alt="${token.name}" loading="lazy" style="--flip-x: ${flipX}">
             <div class="vn-character-nameplate"><span class="vn-nameplate-text">${displayName}</span></div>
             <div class="vn-character-glow"></div></div>`;

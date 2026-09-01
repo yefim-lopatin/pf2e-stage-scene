@@ -26,7 +26,7 @@ class VNSceneState {
         this.portraitScale = 1.0;
         this.atmosphereEffect = 'particles';
         this.particlesForeground = false;
-        this.speakers = Object.fromEntries(VNSceneState.POSITIONS.map(p => [p, null]));
+        this.speakers = Object.fromEntries(VNSceneState.POSITIONS.map(p => [p, []]));
         this.flipped = {};
         this.visibility = {};
         this.musicUuid = null;
@@ -49,7 +49,7 @@ class VNSceneState {
             portraitScale: this.portraitScale,
             atmosphereEffect: this.atmosphereEffect,
             particlesForeground: this.particlesForeground,
-            speakers: { ...this.speakers },
+            speakers: Object.fromEntries(VNSceneState.POSITIONS.map(p => [p, [...(this.speakers[p] ?? [])]])),
             flipped: { ...this.flipped },
             visibility: { ...this.visibility },
             musicUuid: this.musicUuid,
@@ -88,7 +88,9 @@ class VNSceneState {
         this.portraitNames = { ...(p.portraitNames ?? {}) };
         this.portraitScales = { ...(p.portraitScales ?? {}) };
         for (const pos of VNSceneState.POSITIONS) {
-            this.speakers[pos] = p.speakers?.[pos] ?? null;
+            const speakers = p.speakers?.[pos];
+            // До версии 0.2.1 на каждой стороне мог быть только один говорящий.
+            this.speakers[pos] = Array.isArray(speakers) ? [...speakers] : (speakers ? [speakers] : []);
         }
         this.active = true;
     }
@@ -106,11 +108,12 @@ class VNSceneState {
     }
 
     toggleSpeaker(tokenId, position) {
-        if (this.speakers[position] === tokenId) {
-            this.speakers[position] = null;
+        const speakers = this.speakers[position] ??= [];
+        if (speakers.includes(tokenId)) {
+            this.speakers[position] = speakers.filter(id => id !== tokenId);
             return false;
         }
-        this.speakers[position] = tokenId;
+        speakers.push(tokenId);
         return true;
     }
 
