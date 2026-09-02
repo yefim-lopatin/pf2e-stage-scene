@@ -41,6 +41,10 @@ class VNSceneHTML {
 
         let html = '', idx = 0;
         const totalRows = rows.length;
+        // Ряды чередуются по горизонтали, как в шахматном порядке.
+        // Для правой стороны направление зеркальное, чтобы портреты
+        // оставались внутри своей половины сцены.
+        const staggerDirection = position === 'right' ? -1 : 1;
         for (let r = 0; r < totalRows; r++) {
             const rowTokens = tokens.slice(idx, idx + rows[r]);
             idx += rows[r];
@@ -50,7 +54,8 @@ class VNSceneHTML {
             else if (totalRows === 2) rowClass += ' vn-back-row';
             else rowClass += ` vn-back-row vn-row-depth-${totalRows - 1 - r}`;
             const rowType = isFront ? 'front' : 'back';
-            html += `<div class="${rowClass}" data-depth="${r}">${rowTokens.map(t => this.character(t, rowType)).join('')}</div>`;
+            const rowOffset = (r % 2 === 0 ? 1 : -1) * staggerDirection * 4;
+            html += `<div class="${rowClass}" data-depth="${r}" style="--vn-row-offset: ${rowOffset}vw;">${rowTokens.map(t => this.character(t, rowType)).join('')}</div>`;
         }
         return html;
     }

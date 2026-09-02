@@ -1443,7 +1443,7 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     flex-direction: column;
     justify-content: flex-end;
     align-items: center;
-    gap: 1.5vh;
+    gap: 0;
 }
 
 /* Shared row styles */
@@ -1453,8 +1453,10 @@ body.vn-nameplate-hidden .vn-character-nameplate {
     align-items: flex-end;
     width: 100%;
     position: relative;
+    /* Фиксированное шахматное смещение рядов. */
+    transform: translateX(var(--vn-row-offset, 0));
     /* Transition для плавного переключения z-index */
-    transition: z-index 0s;
+    transition: transform 0.3s ease, z-index 0s;
 }
 
 /* Portraits in one row overlap slightly, while the rows stay fixed. */
@@ -1470,7 +1472,8 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 
 .vn-back-row {
     z-index: 1;
-    margin-bottom: 0;
+    /* Нижний ряд частично перекрывает верхний и всегда остаётся впереди. */
+    margin-bottom: -7vh;
     pointer-events: auto;
 }
 
@@ -1497,7 +1500,7 @@ body.vn-nameplate-hidden .vn-character-nameplate {
 /* Для 3+ строк: каждый дополнительный уровень глубины ещё меньше */
 .vn-row-depth-2 {
     z-index: 0;
-    margin-bottom: 0;
+    margin-bottom: -5vh;
 }
 
 .vn-row-depth-2 .vn-character {
