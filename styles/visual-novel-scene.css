@@ -504,91 +504,10 @@
     border-radius: 2px;
 }
 
-/* Message container */
-.vn-chat-panel .chat-message {
-    background: rgba(255, 255, 255, 0.04) !important;
-    border: 1px solid rgba(255, 255, 255, 0.07) !important;
-    border-radius: 8px;
-    margin: 2px 0 !important;
-    /* Flip Foundry's CSS variables for dark-on-light text */
-    --color-text-dark-primary: rgba(215, 215, 225, 0.92);
-    --color-text-dark-secondary: rgba(180, 180, 195, 0.8);
-    --color-text-dark-heading: rgba(225, 225, 235, 1);
-    --color-text-dark-inactive: rgba(150, 150, 170, 0.7);
-    --color-dark-text: rgba(215, 215, 225, 0.92);
-    color: rgba(215, 215, 225, 0.92);
-}
-
-/* Force light text on everything — catches hardcoded color: #000 / color: #191813 */
-.vn-chat-panel .chat-message * { color: rgba(215, 215, 225, 0.92) !important; }
-
-/* Clear backgrounds — but skip elements with inline background (token portraits, etc.) */
-.vn-chat-panel .chat-message div:not([style*="background"]),
-.vn-chat-panel .chat-message section,
-.vn-chat-panel .chat-message article,
-.vn-chat-panel .chat-message header,
-.vn-chat-panel .chat-message footer,
-.vn-chat-panel .chat-message aside,
-.vn-chat-panel .chat-message table,
-.vn-chat-panel .chat-message tbody,
-.vn-chat-panel .chat-message tr,
-.vn-chat-panel .chat-message td,
-.vn-chat-panel .chat-message th,
-.vn-chat-panel .chat-message ol,
-.vn-chat-panel .chat-message ul,
-.vn-chat-panel .chat-message li:not(.chat-message) {
-    background: transparent !important;
-    border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-/* Restore links and dice accents */
-.vn-chat-panel .chat-message a,
-.vn-chat-panel .chat-message a.inline-roll,
-.vn-chat-panel .chat-message a.roll { color: var(--vn-accent) !important; }
-.vn-chat-panel .chat-message .dice-total { color: var(--vn-accent) !important; }
-
-/* PF2e check cards inherit a light button background from the system.
-   The scene chat is dark, so restore a high-contrast control here. */
-.vn-chat-panel .chat-message button {
-    display: flex !important;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    min-height: 36px;
-    padding: 7px 10px;
-    background: linear-gradient(135deg, rgba(50, 63, 86, 0.98), rgba(33, 42, 60, 0.98)) !important;
-    border: 1px solid rgba(136, 192, 208, 0.9) !important;
-    border-radius: 6px;
-    color: #fff !important;
-    font-weight: 700;
-    text-align: center;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.1), 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-
-.vn-chat-panel .chat-message button * { color: inherit !important; }
-.vn-chat-panel .chat-message button:hover { background: linear-gradient(135deg, rgba(70, 91, 124, 1), rgba(45, 59, 85, 1)) !important; }
-.vn-chat-panel .chat-message button:focus-visible { outline: 2px solid var(--vn-gold); outline-offset: 2px; }
-
-/* PF2e checks are custom spans, not buttons. Their light system surface is
-   unreadable in the dark scene chat, so give them a dedicated dark control. */
-.vn-chat-panel .chat-message :is(a.inline-check, span[data-pf2-check]) {
-    display: inline-flex !important;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 7px !important;
-    background: linear-gradient(135deg, rgba(50, 63, 86, 1), rgba(33, 42, 60, 1)) !important;
-    border: 1px solid rgba(136, 192, 208, 0.95) !important;
-    border-radius: 5px !important;
-    color: #f8fbff !important;
-    font-weight: 700;
-    line-height: 1.25;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-    box-shadow: inset 0 1px rgba(255, 255, 255, 0.12), 0 1px 5px rgba(0, 0, 0, 0.3);
-}
-
-.vn-chat-panel .chat-message :is(a.inline-check, span[data-pf2-check]) :is(i, span, .label) {
-    color: inherit !important;
+/* Keep message cards, roll results and their controls styled by Foundry/PF2e.
+   Combat can still be started from the regular encounter controls. */
+.vn-chat-panel [data-action="startCombat"] {
+    display: none !important;
 }
 
 /* Chat input area (v14: form.chat-form) */
