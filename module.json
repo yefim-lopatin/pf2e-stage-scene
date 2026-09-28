@@ -2,10 +2,10 @@
   "id": "pf2e-stage-scene",
   "title": "PF2e Stage Scene",
   "description": "<p>Визуальные сцены для диалогов: портреты актёров, фоны, эффекты, музыка и сохранённые пресеты.</p>",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "compatibility": {
     "minimum": "13",
-    "verified": "14"
+    "verified": "14.368"
   },
   "authors": [
     {
@@ -15,7 +15,7 @@
   ],
   "url": "https://github.com/yefim-lopatin/pf2e-stage-scene",
   "manifest": "https://github.com/yefim-lopatin/pf2e-stage-scene/releases/latest/download/module.json",
-  "download": "https://github.com/yefim-lopatin/pf2e-stage-scene/releases/latest/download/pf2e-stage-scene.zip",
+  "download": "https://github.com/yefim-lopatin/pf2e-stage-scene/releases/download/v0.2.6/pf2e-stage-scene.zip",
   "esmodules": [
     "scripts/main.js"
   ],
